@@ -117,6 +117,19 @@ def cmd_forecast(cfg, ctx):
     return day(0, "Today") + " | " + day(1, "Tmrw")
 
 
+@command("weather")
+def cmd_weather(cfg, ctx):
+    """Combined reply: current temperature (home, plus caller if known)
+    and the two-day outlook. Either half is dropped if its lookup fails."""
+    parts = []
+    for fn in (cmd_temperature, cmd_forecast):
+        try:
+            parts.append(fn(cfg, ctx))
+        except Exception:  # noqa: BLE001
+            log.exception("[weather] part %s failed", fn.__name__)
+    return "\n".join(parts) if parts else "Weather lookup failed"
+
+
 @command("signal")
 def cmd_signal(cfg, ctx):
     pkt = ctx["packet"]
