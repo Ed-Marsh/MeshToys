@@ -48,9 +48,10 @@ COMMANDS = {}
 
 def command(name):
     """Register a function as the handler for [name]. It receives the
-    runtime config (argparse namespace) and a context dict
-    ({"sender": node id, "pos": (lat, lon) or None}) and returns a reply
-    string, or None for no reply."""
+    runtime config (argparse namespace) and a context dict and returns a
+    reply string, or None for no reply. Context keys: sender (node id),
+    pos ((lat, lon) or None), packet (the received packet dict),
+    iface (the meshtastic interface), my_id (this node's id)."""
     def deco(fn):
         COMMANDS[name.lower()] = fn
         return fn
@@ -89,6 +90,65 @@ def cmd_temperature(cfg, ctx):
     except Exception:  # noqa: BLE001
         log.exception("Caller weather lookup failed")
         return reply + " | You: lookup failed"
+
+
+@command("forecast")
+def cmd_forecast(cfg, ctx):
+    r = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": round(cfg.lat, 2),
+            "longitude": round(cfg.lon, 2),
+            "daily": "temperature_2m_max,temperature_2m_min,"
+                     "precipitation_probability_max",
+            "forecast_days": 2,
+            "timezone": "auto",
+        },
+        timeout=10,
+    )
+    r.raise_for_status()
+    d = r.json()["daily"]
+
+    def day(i, label):
+        rain = d["precipitation_probability_max"][i]
+        rain = "?" if rain is None else f"{rain:.0f}%"
+        return (f"{label} {d['temperature_2m_max'][i]:.0f}/"
+                f"{d['temperature_2m_min'][i]:.0f}C rain {rain}")
+    return day(0, "Today") + " | " + day(1, "Tmrw")
+
+
+@command("signal")
+def cmd_signal(cfg, ctx):
+    pkt = ctx["packet"]
+    snr, rssi = pkt.get("rxSnr"), pkt.get("rxRssi")
+    if snr is None and rssi is None:
+        return "No radio signal data for that message"
+    parts = []
+    if snr is not None:
+        parts.append(f"SNR {snr:.1f}dB")
+    if rssi is not None:
+        parts.append(f"RSSI {rssi}dBm")
+    start, limit = pkt.get("hopStart"), pkt.get("hopLimit")
+    if start is not None and limit is not None:
+        hops = start - limit
+        parts.append("direct" if hops == 0 else f"{hops} hop(s), last-hop link")
+    return "Link: " + ", ".join(parts)
+
+
+@command("nodes")
+def cmd_nodes(cfg, ctx):
+    nodes = ctx["iface"].nodes or {}
+    now = time.time()
+    others = {k: v for k, v in nodes.items() if k != ctx["my_id"]}
+    recent = [v for v in others.values()
+              if v.get("lastHeard") and now - v["lastHeard"] < 3600]
+    reply = f"Heard {len(recent)} node(s) in last hour, {len(others)} known"
+    with_snr = [v for v in recent if v.get("snr") is not None]
+    if with_snr:
+        best = max(with_snr, key=lambda v: v["snr"])
+        name = (best.get("user") or {}).get("shortName") or "?"
+        reply += f" | best SNR {best['snr']:.1f}dB ({name})"
+    return reply
 
 
 @command("ping")
@@ -168,18 +228,20 @@ class Bridge:
             return
         name = m.group(1).lower()
         log.info("%s -> [%s]", sender, name)
-        self.jobs.put((sender, name))
+        self.jobs.put((sender, name, packet))
 
     # Runs handlers off the library thread so slow HTTP can't block the radio.
     def worker(self):
         while True:
-            sender, name = self.jobs.get()
+            sender, name, packet = self.jobs.get()
             handler = COMMANDS.get(name)
             if handler is None:
                 reply = f"Unknown [{name}]. Try [help]"
             else:
                 try:
-                    ctx = {"sender": sender, "pos": self.sender_position(sender)}
+                    ctx = {"sender": sender, "pos": self.sender_position(sender),
+                           "packet": packet, "iface": self.iface,
+                           "my_id": self.my_id}
                     reply = handler(self.cfg, ctx)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Handler %s failed", name)

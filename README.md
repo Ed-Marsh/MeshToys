@@ -11,6 +11,9 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | Command | Reply |
 |---|---|
 | `[temperature]` | Current temperature and "feels like" in °C at your base location, plus the same for the caller's location if their node has shared a position. From [Open-Meteo](https://open-meteo.com) (no API key needed). Example: `Home 12.3C (feels 10.1C) \| You 8.8C (feels 6.8C)` |
+| `[forecast]` | Today and tomorrow at your base: high/low in °C and chance of rain. Example: `Today 11/5C rain 40% \| Tmrw 9/3C rain 70%` |
+| `[signal]` | Radio quality of the caller's message as your node received it: SNR, RSSI and hop count. For a relayed message this is the last hop's link, not the whole path |
+| `[nodes]` | How many nodes your Heltec has heard in the last hour, how many it knows in total, and the best SNR with that node's short name |
 | `[ping]` | `pong` and the PC's time |
 | `[help]` | List of available commands |
 
@@ -53,7 +56,7 @@ Only one program can hold the node's USB serial port at a time. The script recon
 
 ### Adding commands
 
-Write a function that takes the config and a context dict (`ctx["sender"]` is the caller's node ID, `ctx["pos"]` is their `(lat, lon)` or `None`) and returns a reply string, and register it:
+Write a function that takes the config and a context dict (`ctx["sender"]` is the caller's node ID, `ctx["pos"]` is their `(lat, lon)` or `None`, and `ctx["packet"]`, `ctx["iface"]` and `ctx["my_id"]` give the raw packet, the Meshtastic interface and this node's ID) and returns a reply string, and register it:
 
 ```python
 @command("uptime")
