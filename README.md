@@ -47,6 +47,7 @@ Options:
 - `--port`: serial port. Default is auto-detect.
 - `--allow '!a1b2c3d4' ...`: only obey messages from these node IDs. Default is anyone on the mesh.
 - `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
+- `--near-km`: a caller whose known position is within this many km of the base is treated as being at home and gets `You: near home` instead of a second lookup. Default 2.
 - `-v`: verbose logging.
 
 ### Node setup for WiFi
@@ -69,7 +70,7 @@ Replies are truncated to 200 bytes to fit Meshtastic's text limit.
 
 ### Caller location
 
-The caller's position comes from the node database on your Heltec, so it only exists if the caller's node has broadcast its position to the mesh (and the position may be old, or deliberately reduced in precision). If it isn't known the reply says so. Before the weather lookup, the caller's coordinates are rounded to 2 decimal places (about 1 km) and only those are sent to Open-Meteo.
+The caller's position comes from the node database on your Heltec, so it only exists if the caller's node has broadcast its position to the mesh (and the position may be old, or deliberately reduced in precision). If it isn't known the reply says so. The coordinates used for each caller are written to the log with their distance from the base, which helps when a reading looks wrong. Before the weather lookup, the caller's coordinates are rounded to 2 decimal places (about 1 km) and only those are sent to Open-Meteo.
 
 ### Security
 

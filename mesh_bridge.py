@@ -25,6 +25,7 @@ Notes:
 
 import argparse
 import logging
+import math
 import queue
 import re
 import threading
@@ -58,6 +59,14 @@ def command(name):
     return deco
 
 
+def distance_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance (haversine) in km."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 6371.0 * 2 * math.asin(math.sqrt(a))
+
+
 def fetch_temp(lat, lon):
     """Return (temperature C, feels-like C) for a point via Open-Meteo
     (free, no API key). Coordinates are rounded to 2 dp (~1 km) before being
@@ -84,6 +93,11 @@ def cmd_temperature(cfg, ctx):
     pos = ctx.get("pos")
     if pos is None:
         return reply + " | You: no position known"
+    dist = distance_km(cfg.lat, cfg.lon, pos[0], pos[1])
+    log.info("Caller %s position %.5f,%.5f (%.2f km from base)",
+             ctx.get("sender"), pos[0], pos[1], dist)
+    if dist <= getattr(cfg, "near_km", 2.0):
+        return reply + " | You: near home"
     try:
         yt, yf = fetch_temp(*pos)
         return reply + f" | You {yt:.1f}C (feels {yf:.1f}C)"
@@ -314,6 +328,9 @@ def main():
     ap.add_argument("--dm-only", action="store_true",
                     help="only act on direct messages addressed to this node; "
                          "ignore channel/public broadcasts")
+    ap.add_argument("--near-km", type=float, default=2.0,
+                    help="callers whose known position is within this many km of "
+                         "the base are treated as being at home (default 2)")
     ap.add_argument("-v", "--verbose", action="store_true")
     cfg = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if cfg.verbose else logging.INFO,
