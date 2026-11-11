@@ -38,23 +38,28 @@ from pubsub import pub
 
 log = logging.getLogger("mesh_bridge")
 
+PUBLIC_COOLDOWN_S = 60         # minimum gap between public sends
 MAX_REPLY_BYTES = 200          # Meshtastic text payload limit is ~233 bytes
-COMMAND_RE = re.compile(r"\[\s*([A-Za-z0-9_]+)\s*\]")
+COMMAND_RE = re.compile(r"\[\s*([A-Za-z0-9_]+)(?:\s+([^\]]*))?\s*\]")
 
 # ---------------------------------------------------------------------------
 # Command registry
 # ---------------------------------------------------------------------------
 COMMANDS = {}
+ADMIN_COMMANDS = set()   # names that only --admin nodes may run
 
 
-def command(name):
+def command(name, admin=False):
     """Register a function as the handler for [name]. It receives the
     runtime config (argparse namespace) and a context dict and returns a
     reply string, or None for no reply. Context keys: sender (node id),
-    pos ((lat, lon) or None), packet (the received packet dict),
+    pos ((lat, lon) or None), args (text after the command name inside
+    the brackets, "" if none), packet (the received packet dict),
     iface (the meshtastic interface), my_id (this node's id)."""
     def deco(fn):
         COMMANDS[name.lower()] = fn
+        if admin:
+            ADMIN_COMMANDS.add(name.lower())
         return fn
     return deco
 
@@ -178,6 +183,20 @@ def cmd_nodes(cfg, ctx):
     return reply
 
 
+@command("announce", admin=True)
+def cmd_announce(cfg, ctx):
+    if not cfg.announce:
+        return "No preset: start with --announce TEXT, or use [say text]"
+    return ctx["bridge"].send_public(cfg.announce.replace("{id}", ctx["my_id"]))
+
+
+@command("say", admin=True)
+def cmd_say(cfg, ctx):
+    if not ctx["args"]:
+        return "Usage: [say your text]"
+    return ctx["bridge"].send_public(ctx["args"])
+
+
 @command("ping")
 def cmd_ping(cfg, ctx):
     return "pong " + time.strftime("%H:%M:%S")
@@ -185,7 +204,9 @@ def cmd_ping(cfg, ctx):
 
 @command("help")
 def cmd_help(cfg, ctx):
-    return "Commands: " + " ".join(f"[{c}]" for c in sorted(COMMANDS))
+    is_admin = ctx.get("is_admin")
+    names = [c for c in sorted(COMMANDS) if is_admin or c not in ADMIN_COMMANDS]
+    return "Commands: " + " ".join(f"[{c}]" for c in names)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +220,8 @@ class Bridge:
         self.jobs = queue.Queue()
         self.allow = {a.lower() for a in cfg.allow} if cfg.allow else None
         self.lost = threading.Event()
+        self.admins = {a.lower() for a in (cfg.admin or [])}
+        self.last_public = 0.0
 
     def connect(self):
         if self.cfg.host:
@@ -220,8 +243,6 @@ class Bridge:
         pub.subscribe(self.on_lost, "meshtastic.connection.lost")
         self.connect()
         threading.Thread(target=self.worker, daemon=True).start()
-        if self.cfg.announce:
-            threading.Thread(target=self.announcer, daemon=True).start()
 
     def sender_position(self, node_id):
         """Last known (lat, lon) for a node from the local node database, or
@@ -247,26 +268,6 @@ class Bridge:
         log.info("PUBLIC ch%s from %s (%s): %s", packet.get("channel", 0),
                  sender, self.node_name(sender), text[:200])
 
-    # ---- periodic public announcement (opt-in) ----
-    def announcer(self):
-        interval = self.cfg.announce_every * 60
-        text = self.cfg.announce.replace("{id}", self.my_id or "")
-        if len(text.encode("utf-8")) > MAX_REPLY_BYTES:
-            log.error("Announcement is over %d bytes; not sending", MAX_REPLY_BYTES)
-            return
-        log.info("Announcing every %g min on channel %d", self.cfg.announce_every,
-                 self.cfg.announce_channel)
-        while True:
-            # Wait first, so restarting the script doesn't re-announce each time.
-            time.sleep(interval)
-            if self.lost.is_set():
-                continue
-            try:
-                log.info("Announcing: %s", text)
-                self.iface.sendText(text, channelIndex=self.cfg.announce_channel)
-            except Exception:  # noqa: BLE001
-                log.exception("Announcement failed")
-
     # Called on the meshtastic library's thread: keep it quick.
     def on_receive(self, packet, interface):
         try:
@@ -288,27 +289,49 @@ class Bridge:
         if not m:
             return
         name = m.group(1).lower()
-        log.info("%s -> [%s]", sender, name)
-        self.jobs.put((sender, name, packet))
+        args = (m.group(2) or "").strip()
+        if packet.get("toId") != self.my_id and name in ADMIN_COMMANDS:
+            log.warning("Ignoring admin command [%s] sent publicly by %s", name, sender)
+            return
+        log.info("%s -> [%s]%s", sender, name, f" {args}" if args else "")
+        self.jobs.put((sender, name, args, packet))
 
     # Runs handlers off the library thread so slow HTTP can't block the radio.
     def worker(self):
         while True:
-            sender, name, packet = self.jobs.get()
+            sender, name, args, packet = self.jobs.get()
             handler = COMMANDS.get(name)
+            is_admin = sender.lower() in self.admins
+            if handler is not None and name in ADMIN_COMMANDS and not is_admin:
+                # Don't reveal or answer admin commands to anyone else.
+                log.warning("Refused admin command [%s] from %s", name, sender)
+                continue
             if handler is None:
                 reply = f"Unknown [{name}]. Try [help]"
             else:
                 try:
                     ctx = {"sender": sender, "pos": self.sender_position(sender),
                            "packet": packet, "iface": self.iface,
-                           "my_id": self.my_id}
+                           "my_id": self.my_id, "args": args,
+                           "is_admin": is_admin, "bridge": self}
                     reply = handler(self.cfg, ctx)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Handler %s failed", name)
                     reply = f"[{name}] failed: {type(e).__name__}"
             if reply:
                 self.send(sender, reply)
+
+    def send_public(self, text):
+        """Broadcast text on the public channel. Returns a status string."""
+        if time.time() - self.last_public < PUBLIC_COOLDOWN_S:
+            wait = int(PUBLIC_COOLDOWN_S - (time.time() - self.last_public))
+            return f"Too soon, wait {wait}s"
+        if len(text.encode("utf-8")) > MAX_REPLY_BYTES:
+            return f"Too long (max {MAX_REPLY_BYTES} bytes)"
+        log.info("Public send on ch%d: %s", self.cfg.announce_channel, text)
+        self.iface.sendText(text, channelIndex=self.cfg.announce_channel)
+        self.last_public = time.time()
+        return "Sent publicly"
 
     def send(self, dest, text):
         data = text.encode("utf-8")[:MAX_REPLY_BYTES].decode("utf-8", "ignore")
@@ -365,20 +388,19 @@ def main():
     ap.add_argument("--near-km", type=float, default=2.0,
                     help="callers whose known position is within this many km of "
                          "the base are treated as being at home (default 2)")
+    ap.add_argument("--admin", nargs="*", default=None, metavar="NODE_ID",
+                    help="node IDs allowed to run admin commands such as [announce] "
+                         "and [say] (e.g. '!b3725444'). Admin commands are disabled "
+                         "if this is not given")
     ap.add_argument("--announce", default=None, metavar="TEXT",
-                    help="periodically send this text as a public message; {id} is "
-                         "replaced with this node's ID. Off by default")
-    ap.add_argument("--announce-every", type=float, default=120, metavar="MIN",
-                    help="minutes between announcements (default 120, minimum 30)")
+                    help="preset text sent publicly by the [announce] admin command; "
+                         "{id} is replaced with this node's ID")
     ap.add_argument("--announce-channel", type=int, default=0, metavar="N",
-                    help="channel index to announce on (default 0, the primary)")
+                    help="channel index for public sends (default 0, the primary)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
     cfg = ap.parse_args()
-    if cfg.announce and cfg.announce_every < 30:
-        ap.error("--announce-every must be at least 30 minutes "
-                 "(be kind to the shared channel's airtime)")
     handlers = [logging.StreamHandler()]
     if cfg.log_file:
         handlers.append(logging.FileHandler(cfg.log_file, encoding="utf-8"))
