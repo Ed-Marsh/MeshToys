@@ -279,6 +279,9 @@ class Bridge:
             return
         if packet.get("toId") != self.my_id:
             self.log_public(packet, sender, text)
+        elif not COMMAND_RE.search(text):
+            # A direct message with no [command]: nothing to run, but log it.
+            log.info("DM from %s (%s): %s", sender, self.node_name(sender), text[:200])
         if self.cfg.dm_only and packet.get("toId") != self.my_id:
             log.debug("Ignoring non-DM from %s (to %s)", sender, packet.get("toId"))
             return
