@@ -48,22 +48,24 @@ COMMANDS = {}
 
 def command(name):
     """Register a function as the handler for [name]. It receives the
-    runtime config (argparse namespace) and returns a reply string, or None
-    for no reply."""
+    runtime config (argparse namespace) and a context dict
+    ({"sender": node id, "pos": (lat, lon) or None}) and returns a reply
+    string, or None for no reply."""
     def deco(fn):
         COMMANDS[name.lower()] = fn
         return fn
     return deco
 
 
-@command("temperature")
-def cmd_temperature(cfg):
-    # Open-Meteo: free, no API key. Temperatures in Celsius by default.
+def fetch_temp(lat, lon):
+    """Return (temperature C, feels-like C) for a point via Open-Meteo
+    (free, no API key). Coordinates are rounded to 2 dp (~1 km) before being
+    sent, so a caller's precise position is never passed on."""
     r = requests.get(
         "https://api.open-meteo.com/v1/forecast",
         params={
-            "latitude": cfg.lat,
-            "longitude": cfg.lon,
+            "latitude": round(lat, 2),
+            "longitude": round(lon, 2),
             "current": "temperature_2m,apparent_temperature",
             "timezone": "auto",
         },
@@ -71,17 +73,31 @@ def cmd_temperature(cfg):
     )
     r.raise_for_status()
     cur = r.json()["current"]
-    return (f"Temp {cur['temperature_2m']:.1f}C "
-            f"(feels {cur['apparent_temperature']:.1f}C)")
+    return cur["temperature_2m"], cur["apparent_temperature"]
+
+
+@command("temperature")
+def cmd_temperature(cfg, ctx):
+    t, f = fetch_temp(cfg.lat, cfg.lon)
+    reply = f"Home {t:.1f}C (feels {f:.1f}C)"
+    pos = ctx.get("pos")
+    if pos is None:
+        return reply + " | You: no position known"
+    try:
+        yt, yf = fetch_temp(*pos)
+        return reply + f" | You {yt:.1f}C (feels {yf:.1f}C)"
+    except Exception:  # noqa: BLE001
+        log.exception("Caller weather lookup failed")
+        return reply + " | You: lookup failed"
 
 
 @command("ping")
-def cmd_ping(cfg):
+def cmd_ping(cfg, ctx):
     return "pong " + time.strftime("%H:%M:%S")
 
 
 @command("help")
-def cmd_help(cfg):
+def cmd_help(cfg, ctx):
     return "Commands: " + " ".join(f"[{c}]" for c in sorted(COMMANDS))
 
 
@@ -118,6 +134,20 @@ class Bridge:
         self.connect()
         threading.Thread(target=self.worker, daemon=True).start()
 
+    def sender_position(self, node_id):
+        """Last known (lat, lon) for a node from the local node database, or
+        None. Only available if that node shares its position."""
+        try:
+            pos = self.iface.nodes[node_id].get("position") or {}
+        except (KeyError, AttributeError, TypeError):
+            return None
+        lat, lon = pos.get("latitude"), pos.get("longitude")
+        if lat is None and pos.get("latitudeI") is not None:
+            lat, lon = pos["latitudeI"] / 1e7, pos["longitudeI"] / 1e7
+        if lat is None or lon is None or (lat == 0 and lon == 0):
+            return None
+        return (lat, lon)
+
     # Called on the meshtastic library's thread: keep it quick.
     def on_receive(self, packet, interface):
         try:
@@ -149,7 +179,8 @@ class Bridge:
                 reply = f"Unknown [{name}]. Try [help]"
             else:
                 try:
-                    reply = handler(self.cfg)
+                    ctx = {"sender": sender, "pos": self.sender_position(sender)}
+                    reply = handler(self.cfg, ctx)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Handler %s failed", name)
                     reply = f"[{name}] failed: {type(e).__name__}"

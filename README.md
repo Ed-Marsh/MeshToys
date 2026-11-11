@@ -10,7 +10,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 
 | Command | Reply |
 |---|---|
-| `[temperature]` | Current temperature and "feels like" in °C, from [Open-Meteo](https://open-meteo.com) (no API key needed) |
+| `[temperature]` | Current temperature and "feels like" in °C at your base location, plus the same for the caller's location if their node has shared a position. From [Open-Meteo](https://open-meteo.com) (no API key needed). Example: `Home 12.3C (feels 10.1C) \| You 8.8C (feels 6.8C)` |
 | `[ping]` | `pong` and the PC's time |
 | `[help]` | List of available commands |
 
@@ -53,15 +53,19 @@ Only one program can hold the node's USB serial port at a time. The script recon
 
 ### Adding commands
 
-Write a function that takes the config and returns a reply string, and register it:
+Write a function that takes the config and a context dict (`ctx["sender"]` is the caller's node ID, `ctx["pos"]` is their `(lat, lon)` or `None`) and returns a reply string, and register it:
 
 ```python
 @command("uptime")
-def cmd_uptime(cfg):
+def cmd_uptime(cfg, ctx):
     return "up 3 days"
 ```
 
 Replies are truncated to 200 bytes to fit Meshtastic's text limit.
+
+### Caller location
+
+The caller's position comes from the node database on your Heltec, so it only exists if the caller's node has broadcast its position to the mesh (and the position may be old, or deliberately reduced in precision). If it isn't known the reply says so. Before the weather lookup, the caller's coordinates are rounded to 2 decimal places (about 1 km) and only those are sent to Open-Meteo.
 
 ### Security
 
