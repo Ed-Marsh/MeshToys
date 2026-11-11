@@ -48,6 +48,10 @@ Options:
 - `--allow '!a1b2c3d4' ...`: only obey messages from these node IDs. Default is anyone on the mesh.
 - `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
 - `--near-km`: a caller whose known position is within this many km of the base is treated as being at home and gets `You: near home` instead of a second lookup. Default 2.
+- `--announce TEXT`: periodically send TEXT as a public message so other mesh users know the node offers these commands. `{id}` is replaced with this node's ID. Off by default. Example: `--announce "Home node {id}: DM me [weather] or [help]"`
+- `--announce-every MIN`: minutes between announcements. Default 120, minimum 30. The first one is sent after one full interval, so restarting the script doesn't re-announce each time.
+- `--announce-channel N`: channel index to announce on. Default 0 (the primary channel).
+- `--log-file PATH`: also append the log to a file.
 - `-v`: verbose logging.
 
 ### Node setup for WiFi
@@ -67,6 +71,12 @@ def cmd_uptime(cfg, ctx):
 ```
 
 Replies are truncated to 200 bytes to fit Meshtastic's text limit.
+
+### Public messages
+
+Text messages that are not addressed to this node (public/channel broadcasts) are never acted on with `--dm-only`, but they are written to the log as `PUBLIC chN from !id (name): text`, so you can see replies to an announcement and general chatter. Use `--log-file` to keep a record. A reply to an announcement may arrive as a public message or as a direct message; a direct message containing a `[command]` is handled as normal.
+
+Keep announcements infrequent and short. The channel's airtime is shared by everyone, which is why the interval has a minimum.
 
 ### Caller location
 

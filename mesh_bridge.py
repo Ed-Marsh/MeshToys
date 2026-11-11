@@ -220,6 +220,8 @@ class Bridge:
         pub.subscribe(self.on_lost, "meshtastic.connection.lost")
         self.connect()
         threading.Thread(target=self.worker, daemon=True).start()
+        if self.cfg.announce:
+            threading.Thread(target=self.announcer, daemon=True).start()
 
     def sender_position(self, node_id):
         """Last known (lat, lon) for a node from the local node database, or
@@ -235,6 +237,36 @@ class Bridge:
             return None
         return (lat, lon)
 
+    def node_name(self, node_id):
+        try:
+            return (self.iface.nodes[node_id].get("user") or {}).get("shortName") or "?"
+        except (KeyError, AttributeError, TypeError):
+            return "?"
+
+    def log_public(self, packet, sender, text):
+        log.info("PUBLIC ch%s from %s (%s): %s", packet.get("channel", 0),
+                 sender, self.node_name(sender), text[:200])
+
+    # ---- periodic public announcement (opt-in) ----
+    def announcer(self):
+        interval = self.cfg.announce_every * 60
+        text = self.cfg.announce.replace("{id}", self.my_id or "")
+        if len(text.encode("utf-8")) > MAX_REPLY_BYTES:
+            log.error("Announcement is over %d bytes; not sending", MAX_REPLY_BYTES)
+            return
+        log.info("Announcing every %g min on channel %d", self.cfg.announce_every,
+                 self.cfg.announce_channel)
+        while True:
+            # Wait first, so restarting the script doesn't re-announce each time.
+            time.sleep(interval)
+            if self.lost.is_set():
+                continue
+            try:
+                log.info("Announcing: %s", text)
+                self.iface.sendText(text, channelIndex=self.cfg.announce_channel)
+            except Exception:  # noqa: BLE001
+                log.exception("Announcement failed")
+
     # Called on the meshtastic library's thread: keep it quick.
     def on_receive(self, packet, interface):
         try:
@@ -244,6 +276,8 @@ class Bridge:
             return
         if not sender or sender == self.my_id:
             return
+        if packet.get("toId") != self.my_id:
+            self.log_public(packet, sender, text)
         if self.cfg.dm_only and packet.get("toId") != self.my_id:
             log.debug("Ignoring non-DM from %s (to %s)", sender, packet.get("toId"))
             return
@@ -331,10 +365,26 @@ def main():
     ap.add_argument("--near-km", type=float, default=2.0,
                     help="callers whose known position is within this many km of "
                          "the base are treated as being at home (default 2)")
+    ap.add_argument("--announce", default=None, metavar="TEXT",
+                    help="periodically send this text as a public message; {id} is "
+                         "replaced with this node's ID. Off by default")
+    ap.add_argument("--announce-every", type=float, default=120, metavar="MIN",
+                    help="minutes between announcements (default 120, minimum 30)")
+    ap.add_argument("--announce-channel", type=int, default=0, metavar="N",
+                    help="channel index to announce on (default 0, the primary)")
+    ap.add_argument("--log-file", default=None,
+                    help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
     cfg = ap.parse_args()
+    if cfg.announce and cfg.announce_every < 30:
+        ap.error("--announce-every must be at least 30 minutes "
+                 "(be kind to the shared channel's airtime)")
+    handlers = [logging.StreamHandler()]
+    if cfg.log_file:
+        handlers.append(logging.FileHandler(cfg.log_file, encoding="utf-8"))
     logging.basicConfig(level=logging.DEBUG if cfg.verbose else logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
+                        format="%(asctime)s %(levelname)s %(message)s",
+                        handlers=handlers)
     Bridge(cfg).run()
 
 
