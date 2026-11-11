@@ -14,6 +14,7 @@ Run:
     python mesh_bridge.py --lat 51.50 --lon -0.12 --host 192.168.1.50   # WiFi
     python mesh_bridge.py --lat 51.50 --lon -0.12 --port COM5          # USB
     python mesh_bridge.py --lat 51.50 --lon -0.12                      # USB, auto-detect
+    python mesh_bridge.py --lat 51.50 --lon -0.12 --host 192.168.1.50 --dm-only
     python mesh_bridge.py --lat 51.50 --lon -0.12 --allow '!a1b2c3d4'
 
 Notes:
@@ -126,6 +127,9 @@ class Bridge:
             return
         if not sender or sender == self.my_id:
             return
+        if self.cfg.dm_only and packet.get("toId") != self.my_id:
+            log.debug("Ignoring non-DM from %s (to %s)", sender, packet.get("toId"))
+            return
         if self.allow is not None and sender.lower() not in self.allow:
             log.info("Ignoring %s (not in allow list)", sender)
             return
@@ -201,6 +205,9 @@ def main():
                     help="serial port (e.g. COM5 or /dev/ttyACM0); default auto-detect")
     ap.add_argument("--allow", nargs="*", default=None,
                     help="only obey these node IDs (e.g. '!a1b2c3d4'); default: anyone")
+    ap.add_argument("--dm-only", action="store_true",
+                    help="only act on direct messages addressed to this node; "
+                         "ignore channel/public broadcasts")
     ap.add_argument("-v", "--verbose", action="store_true")
     cfg = ap.parse_args()
     logging.basicConfig(level=logging.DEBUG if cfg.verbose else logging.INFO,

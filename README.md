@@ -31,6 +31,9 @@ python mesh_bridge.py --lat 51.50 --lon -0.12 --port COM5
 
 # USB, auto-detect
 python mesh_bridge.py --lat 51.50 --lon -0.12
+
+# Recommended for an open service: WiFi, direct messages only
+python mesh_bridge.py --lat 51.50 --lon -0.12 --host 192.168.1.50 --dm-only
 ```
 
 Options:
@@ -39,6 +42,7 @@ Options:
 - `--host`: node IP or hostname for a WiFi connection. Overrides `--port`.
 - `--port`: serial port. Default is auto-detect.
 - `--allow '!a1b2c3d4' ...`: only obey messages from these node IDs. Default is anyone on the mesh.
+- `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
 - `-v`: verbose logging.
 
 ### Node setup for WiFi
@@ -61,7 +65,7 @@ Replies are truncated to 200 bytes to fit Meshtastic's text limit.
 
 ### Security
 
-Anyone who can reach the node over the mesh can trigger commands unless `--allow` is set. Use `--allow` before adding any command that changes something.
+Anyone who can reach the node over the mesh can trigger commands unless `--allow` is set. With `--dm-only`, they must send a direct message to this node; channel broadcasts are ignored. Use `--allow` before adding any command that changes something.
 
 ## Status
 
