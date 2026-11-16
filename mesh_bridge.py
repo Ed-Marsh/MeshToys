@@ -199,6 +199,158 @@ def cmd_say(cfg, ctx):
     return ctx["bridge"].send_public(ctx["args"])
 
 
+# --- @calc: a small safe calculator (no eval) ------------------------------
+CALC_MAX_LEN = 100        # longest expression accepted
+CALC_MAX_FACT = 170       # largest n for n! (171! overflows a float)
+CALC_MAX_POW_BITS = 20000 # refuse powers whose result would exceed this many bits
+CALC_TOKEN_RE = re.compile(r"\s*(\d+\.?\d*|\.\d+|\*\*|//|[-+*/%^()!x])")
+
+
+class CalcError(Exception):
+    pass
+
+
+def calc_tokens(text):
+    pos, out = 0, []
+    text = text.strip()
+    while pos < len(text):
+        m = CALC_TOKEN_RE.match(text, pos)
+        if not m:
+            raise CalcError("bad character")
+        out.append(m.group(1))
+        pos = m.end()
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+    return out
+
+
+def calc_number(tok):
+    if re.fullmatch(r"\d+", tok):
+        return int(tok)
+    return float(tok)
+
+
+def calc_pow(a, b):
+    if isinstance(b, float) and not b.is_integer():
+        if a < 0:
+            raise CalcError("complex result")
+        return float(a) ** b
+    b = int(b)
+    if abs(b) > 10000 or (isinstance(a, int) and b > 0
+                          and a.bit_length() * b > CALC_MAX_POW_BITS):
+        raise CalcError("too big")
+    return a ** b
+
+
+def calc_eval(text):
+    """Evaluate + - * / // % ** ^ ( ) and postfix ! on plain numbers.
+    '^' means power; 'x' is accepted as multiply."""
+    if len(text) > CALC_MAX_LEN:
+        raise CalcError("too long")
+    toks = calc_tokens(text)
+    if not toks:
+        raise CalcError("empty")
+    i = 0
+
+    def peek():
+        return toks[i] if i < len(toks) else None
+
+    def take():
+        nonlocal i
+        i += 1
+        return toks[i - 1]
+
+    def expr():
+        v = term()
+        while peek() in ("+", "-"):
+            v = v + term() if take() == "+" else v - term()
+        return v
+
+    def term():
+        v = unary()
+        while peek() in ("*", "x", "/", "//", "%"):
+            op = take()
+            r = unary()
+            if op in ("*", "x"):
+                v = v * r
+            elif r == 0:
+                raise CalcError("divide by zero")
+            elif op == "/":
+                v = v / r
+            elif op == "//":
+                v = v // r
+            else:
+                v = v % r
+        return v
+
+    def unary():
+        if peek() in ("+", "-"):
+            return unary() if take() == "+" else -unary()
+        return power()
+
+    def power():
+        base = postfix()
+        if peek() in ("**", "^"):
+            take()
+            return calc_pow(base, unary())   # right-associative, allows 2^-1
+        return base
+
+    def postfix():
+        v = atom()
+        while peek() == "!":
+            take()
+            if isinstance(v, float) and not v.is_integer() or v < 0 or v > CALC_MAX_FACT:
+                raise CalcError(f"! needs a whole number 0-{CALC_MAX_FACT}")
+            v = math.factorial(int(v))
+        return v
+
+    def atom():
+        t = peek()
+        if t is None:
+            raise CalcError("incomplete")
+        if t == "(":
+            take()
+            v = expr()
+            if peek() != ")":
+                raise CalcError("missing )")
+            take()
+            return v
+        if t[0].isdigit() or t[0] == ".":
+            return calc_number(take())
+        raise CalcError(f"unexpected {t}")
+
+    result = expr()
+    if i != len(toks):
+        raise CalcError(f"unexpected {toks[i]}")
+    return result
+
+
+def calc_format(v):
+    if isinstance(v, int):
+        txt = str(v)
+        if len(txt) <= 40:
+            return txt
+        try:
+            return f"{float(v):.6g}"
+        except OverflowError:
+            return "too big"
+    if v != v or v in (float("inf"), float("-inf")):
+        return "too big"
+    return f"{v:.10g}"
+
+
+@command("calc")
+def cmd_calc(cfg, ctx):
+    if not ctx["args"]:
+        return "Usage: @calc 23 * 5 / (10 * 2)  (also ** ^ // % and 4!)"
+    try:
+        return calc_format(calc_eval(ctx["args"]))
+    except CalcError as e:
+        return f"calc: {e}"
+    except (OverflowError, ZeroDivisionError):
+        return "calc: too big"
+
+
 @command("ping")
 def cmd_ping(cfg, ctx):
     return "pong " + time.strftime("%H:%M:%S")

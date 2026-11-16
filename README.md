@@ -17,6 +17,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `@nodes` | How many nodes your Heltec has heard in the last hour, how many it knows in total, and the best SNR with that node's short name |
 | `@announce` | **Admin only.** Broadcasts the `--announce` preset on the public channel and replies `Sent publicly` |
 | `@say text` | **Admin only.** Broadcasts `text` on the public channel. Example: `@say Net tonight 8pm` |
+| `@calc expression` | Calculator. Supports `+ - * / // % ** ^` (`^` is power), brackets and `!` for factorial (0 to 170). Examples: `@calc 23 * 5 / (10 * 2)` gives `5.75`, `@calc 4!` gives `24`. Very large results are shown in scientific notation, and oversized powers are refused |
 | `@ping` | `pong` and the PC's time |
 | `@help` | List of available commands |
 
