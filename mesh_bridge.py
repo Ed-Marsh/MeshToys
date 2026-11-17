@@ -3,9 +3,10 @@
 Meshtastic <-> PC command bridge.
 
 A Heltec node is plugged into this PC over USB. When a text message arriving
-over the mesh contains a command prefixed with @, e.g. "@temperature",
+over the mesh starts with a command prefixed with /, e.g. "/temperature",
 the matching handler runs on the PC and its return value is sent back to the
-sender as a direct message.
+sender as a direct message. A handler may return a list of strings, which are
+sent as separate messages a few seconds apart (the Super Star Trek game does).
 
 Setup:
     pip install meshtastic pypubsub requests
@@ -26,6 +27,7 @@ Notes:
 import argparse
 import logging
 import math
+import os
 import queue
 import re
 import threading
@@ -36,23 +38,28 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 from pubsub import pub
 
+import trek
+
 log = logging.getLogger("mesh_bridge")
 
 PUBLIC_COOLDOWN_S = 60         # minimum gap between public sends
 MAX_REPLY_BYTES = 200          # Meshtastic text payload limit is ~233 bytes
-# "@name" at the start of the message or after whitespace (so e-mail addresses
-# don't match). Everything after the name, to the end of the message, is args.
-COMMAND_RE = re.compile(r"(?<!\S)@([A-Za-z0-9_]+)(?:\s+(.*))?$", re.DOTALL)
+REPLY_GAP_S = 3.0              # pause between the parts of a multi-message reply
+# "/name" at the very start of the message (so a "/" used for division in
+# the middle of text never matches). Everything after the name, to the end of the
+# message, is args.
+COMMAND_RE = re.compile(r"^\s*/([A-Za-z0-9_]+)(?:\s+(.*))?$", re.DOTALL)
 
 # ---------------------------------------------------------------------------
 # Command registry
 # ---------------------------------------------------------------------------
 COMMANDS = {}
 ADMIN_COMMANDS = set()   # names that only --admin nodes may run
+INFO = {}                # name -> one-line description shown by "/help name"
 
 
-def command(name, admin=False):
-    """Register a function as the handler for @name. It receives the
+def command(name, admin=False, info=""):
+    """Register a function as the handler for /name. It receives the
     runtime config (argparse namespace) and a context dict and returns a
     reply string, or None for no reply. Context keys: sender (node id),
     pos ((lat, lon) or None), args (rest of the message after the command
@@ -60,6 +67,7 @@ def command(name, admin=False):
     iface (the meshtastic interface), my_id (this node's id)."""
     def deco(fn):
         COMMANDS[name.lower()] = fn
+        INFO[name.lower()] = info or (fn.__doc__ or "").strip()
         if admin:
             ADMIN_COMMANDS.add(name.lower())
         return fn
@@ -93,7 +101,7 @@ def fetch_temp(lat, lon):
     return cur["temperature_2m"], cur["apparent_temperature"]
 
 
-@command("temperature")
+@command("temperature", info="Current temperature and feels-like at the base, plus yours if your node shares a position")
 def cmd_temperature(cfg, ctx):
     t, f = fetch_temp(cfg.lat, cfg.lon)
     reply = f"Home {t:.1f}C (feels {f:.1f}C)"
@@ -113,7 +121,7 @@ def cmd_temperature(cfg, ctx):
         return reply + " | You: lookup failed"
 
 
-@command("forecast")
+@command("forecast", info="Today and tomorrow at the base: high/low and chance of rain")
 def cmd_forecast(cfg, ctx):
     r = requests.get(
         "https://api.open-meteo.com/v1/forecast",
@@ -138,7 +146,7 @@ def cmd_forecast(cfg, ctx):
     return day(0, "Today") + " | " + day(1, "Tmrw")
 
 
-@command("weather")
+@command("weather", info="Temperature plus forecast in one reply")
 def cmd_weather(cfg, ctx):
     """Combined reply: current temperature (home, plus caller if known)
     and the two-day outlook. Either half is dropped if its lookup fails."""
@@ -147,11 +155,11 @@ def cmd_weather(cfg, ctx):
         try:
             parts.append(fn(cfg, ctx))
         except Exception:  # noqa: BLE001
-            log.exception("@weather part %s failed", fn.__name__)
+            log.exception("/weather part %s failed", fn.__name__)
     return "\n".join(parts) if parts else "Weather lookup failed"
 
 
-@command("signal")
+@command("signal", info="Signal quality (SNR, RSSI, hops) of your last message as this node received it")
 def cmd_signal(cfg, ctx):
     pkt = ctx["packet"]
     snr, rssi = pkt.get("rxSnr"), pkt.get("rxRssi")
@@ -169,7 +177,7 @@ def cmd_signal(cfg, ctx):
     return "Link: " + ", ".join(parts)
 
 
-@command("nodes")
+@command("nodes", info="How many nodes this node heard in the last hour, how many it knows, and the best SNR")
 def cmd_nodes(cfg, ctx):
     nodes = ctx["iface"].nodes or {}
     now = time.time()
@@ -185,21 +193,21 @@ def cmd_nodes(cfg, ctx):
     return reply
 
 
-@command("announce", admin=True)
+@command("announce", admin=True, info="Admin only. Send the preset announcement to the public channel")
 def cmd_announce(cfg, ctx):
     if not cfg.announce:
-        return "No preset: start with --announce TEXT, or use @say text"
+        return "No preset: start with --announce TEXT, or use /say text"
     return ctx["bridge"].send_public(cfg.announce.replace("{id}", ctx["my_id"]))
 
 
-@command("say", admin=True)
+@command("say", admin=True, info="Admin only. Send your text to the public channel. Usage: /say text")
 def cmd_say(cfg, ctx):
     if not ctx["args"]:
-        return "Usage: @say your text"
+        return "Usage: /say your text"
     return ctx["bridge"].send_public(ctx["args"])
 
 
-# --- @calc: a small safe calculator (no eval) ------------------------------
+# --- /calc: a small safe calculator (no eval) ------------------------------
 CALC_MAX_LEN = 100        # longest expression accepted
 CALC_MAX_FACT = 170       # largest n for n! (171! overflows a float)
 CALC_MAX_POW_BITS = 20000 # refuse powers whose result would exceed this many bits
@@ -339,10 +347,10 @@ def calc_format(v):
     return f"{v:.10g}"
 
 
-@command("calc")
+@command("calc", info="Calculator. Example: /calc 23 * 5 / (10 * 2). Supports + - * / // % ** ^ brackets and 4!")
 def cmd_calc(cfg, ctx):
     if not ctx["args"]:
-        return "Usage: @calc 23 * 5 / (10 * 2)  (also ** ^ // % and 4!)"
+        return "Usage: /calc 23 * 5 / (10 * 2)  (also ** ^ // % and 4!)"
     try:
         return calc_format(calc_eval(ctx["args"]))
     except CalcError as e:
@@ -351,16 +359,39 @@ def cmd_calc(cfg, ctx):
         return "calc: too big"
 
 
-@command("ping")
+@command("ping", info="Replies pong with the PC time, to check the bridge is alive")
 def cmd_ping(cfg, ctx):
     return "pong " + time.strftime("%H:%M:%S")
 
 
-@command("help")
+@command("help", info="List commands. Use /help name for details, e.g. /help calc")
 def cmd_help(cfg, ctx):
     is_admin = ctx.get("is_admin")
+    want = ctx["args"].strip().lstrip("/").lower()
+    if want:
+        # Admin commands are not revealed to non-admins.
+        if want not in COMMANDS or (want in ADMIN_COMMANDS and not is_admin):
+            return f"Unknown /{want}. Try /help"
+        return f"/{want}\n{INFO.get(want) or 'no description'}"
     names = [c for c in sorted(COMMANDS) if is_admin or c not in ADMIN_COMMANDS]
-    return "Commands: " + " ".join(f"@{c}" for c in names)
+    lines = ["Commands:"] + [f"/{c}" for c in names] + ["/help name for details"]
+    return trek.pack(lines)
+
+
+# --- Super Star Trek (see trek.py) ------------------------------------------
+TREK = trek.TrekGames(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "trek_games.json"))
+
+
+def _trek_handler(verb):
+    def handler(cfg, ctx):
+        return TREK.command(ctx["sender"], verb, ctx["args"])
+    handler.__name__ = "cmd_" + verb
+    return handler
+
+
+for _verb, _info in trek.INFO.items():
+    command(_verb, info=_info)(_trek_handler(_verb))
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +465,7 @@ class Bridge:
         if packet.get("toId") != self.my_id:
             self.log_public(packet, sender, text)
         elif not COMMAND_RE.search(text):
-            # A direct message with no @command: nothing to run, but log it.
+            # A direct message with no /command: nothing to run, but log it.
             log.info("DM from %s (%s): %s", sender, self.node_name(sender), text[:200])
         if self.cfg.dm_only and packet.get("toId") != self.my_id:
             log.debug("Ignoring non-DM from %s (to %s)", sender, packet.get("toId"))
@@ -448,9 +479,9 @@ class Bridge:
         name = m.group(1).lower()
         args = (m.group(2) or "").strip()
         if packet.get("toId") != self.my_id and name in ADMIN_COMMANDS:
-            log.warning("Ignoring admin command @%s sent publicly by %s", name, sender)
+            log.warning("Ignoring admin command /%s sent publicly by %s", name, sender)
             return
-        log.info("%s -> @%s%s", sender, name, f" {args}" if args else "")
+        log.info("%s -> /%s%s", sender, name, f" {args}" if args else "")
         self.jobs.put((sender, name, args, packet))
 
     # Runs handlers off the library thread so slow HTTP can't block the radio.
@@ -461,10 +492,10 @@ class Bridge:
             is_admin = sender.lower() in self.admins
             if handler is not None and name in ADMIN_COMMANDS and not is_admin:
                 # Don't reveal or answer admin commands to anyone else.
-                log.warning("Refused admin command @%s from %s", name, sender)
+                log.warning("Refused admin command /%s from %s", name, sender)
                 continue
             if handler is None:
-                reply = f"Unknown @{name}. Try @help"
+                reply = f"Unknown /{name}. Try /help"
             else:
                 try:
                     ctx = {"sender": sender, "pos": self.sender_position(sender),
@@ -474,9 +505,13 @@ class Bridge:
                     reply = handler(self.cfg, ctx)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Handler %s failed", name)
-                    reply = f"@{name} failed: {type(e).__name__}"
+                    reply = f"/{name} failed: {type(e).__name__}"
             if reply:
-                self.send(sender, reply)
+                parts = reply if isinstance(reply, (list, tuple)) else [reply]
+                for i, part in enumerate(parts):
+                    if i:
+                        time.sleep(REPLY_GAP_S)
+                    self.send(sender, part)
 
     def send_public(self, text):
         """Broadcast text on the public channel. Returns a status string."""
@@ -546,11 +581,11 @@ def main():
                     help="callers whose known position is within this many km of "
                          "the base are treated as being at home (default 2)")
     ap.add_argument("--admin", nargs="*", default=None, metavar="NODE_ID",
-                    help="node IDs allowed to run admin commands such as @announce "
-                         "and @say (e.g. '!b3725444'). Admin commands are disabled "
+                    help="node IDs allowed to run admin commands such as /announce "
+                         "and /say (e.g. '!b3725444'). Admin commands are disabled "
                          "if this is not given")
     ap.add_argument("--announce", default=None, metavar="TEXT",
-                    help="preset text sent publicly by the @announce admin command; "
+                    help="preset text sent publicly by the /announce admin command; "
                          "{id} is replaced with this node's ID")
     ap.add_argument("--announce-channel", type=int, default=0, metavar="N",
                     help="channel index for public sends (default 0, the primary)")
