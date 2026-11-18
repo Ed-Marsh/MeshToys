@@ -197,7 +197,11 @@ def cmd_nodes(cfg, ctx):
 def cmd_announce(cfg, ctx):
     if not cfg.announce:
         return "No preset: start with --announce TEXT, or use /say text"
-    return ctx["bridge"].send_public(cfg.announce.replace("{id}", ctx["my_id"]))
+    b = ctx["bridge"]
+    text = (cfg.announce.replace("{id}", ctx["my_id"])
+                        .replace("{name}", b.my_long or ctx["my_id"])
+                        .replace("{short}", b.my_short or ctx["my_id"]))
+    return b.send_public(text)
 
 
 @command("say", admin=True, info="Admin only. Send your text to the public channel. Usage: /say text")
@@ -402,6 +406,8 @@ class Bridge:
         self.cfg = cfg
         self.iface = None
         self.my_id = None
+        self.my_long = None
+        self.my_short = None
         self.jobs = queue.Queue()
         self.allow = {a.lower() for a in cfg.allow} if cfg.allow else None
         self.lost = threading.Event()
@@ -415,7 +421,10 @@ class Bridge:
         else:
             self.iface = meshtastic.serial_interface.SerialInterface(
                 devPath=self.cfg.port)  # None = auto-detect
-        self.my_id = self.iface.getMyNodeInfo()["user"]["id"]
+        me = self.iface.getMyNodeInfo()["user"]
+        self.my_id = me["id"]
+        self.my_long = me.get("longName") or self.my_id
+        self.my_short = me.get("shortName") or self.my_id
         self.lost.clear()
         log.info("Connected to node %s", self.my_id)
 
@@ -586,7 +595,8 @@ def main():
                          "if this is not given")
     ap.add_argument("--announce", default=None, metavar="TEXT",
                     help="preset text sent publicly by the /announce admin command; "
-                         "{id} is replaced with this node's ID")
+                         "{name} is replaced with this node's long name, {short} with its "
+                         "short name and {id} with its ID")
     ap.add_argument("--announce-channel", type=int, default=0, metavar="N",
                     help="channel index for public sends (default 0, the primary)")
     ap.add_argument("--log-file", default=None,

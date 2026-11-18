@@ -63,7 +63,7 @@ Options:
 - `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
 - `--near-km`: a caller whose known position is within this many km of the base is treated as being at home and gets `You: near home` instead of a second lookup. Default 2.
 - `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
-- `--announce TEXT`: the preset text sent by `/announce`. `{id}` is replaced with this node's ID.
+- `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
 - `--log-file PATH`: also append the log to a file.
 - `-v`: verbose logging.
@@ -95,7 +95,7 @@ To broadcast from the bridge, send `/announce` or `/say your text` as a direct m
 Example:
 
 ```
-python mesh_bridge.py --lat 51.50 --lon -0.12 --host 192.168.1.50 --dm-only --admin '!b3725444' --announce "Home node {id}: DM me /weather or /help" --log-file mesh.log
+python mesh_bridge.py --lat 51.50 --lon -0.12 --host 192.168.1.50 --dm-only --admin '!b3725444' --announce "Home node {name}: DM me /weather or /help" --log-file mesh.log
 ```
 
 ### Caller location
@@ -121,7 +121,7 @@ Your mission: destroy every Klingon before the stardate deadline, resupplying at
 | `/pha units` | Fire phasers, e.g. `/pha 300`. The energy is shared between the Klingons in the quadrant and falls off with distance |
 | `/tor course` | Fire a photon torpedo along a course. It destroys the first thing it hits (stars absorb it) |
 | `/shi units` | Set the shield level. The energy comes from, and returns to, the ship's energy |
-| `/dam` | Damage report. Docked at a starbase, `/dam y` authorizes repairs, which cost stardates |
+| `/dam` | Damage report. Docked at a starbase, `/dam` quotes the repair time and `/dam y` authorizes it (repairs cost stardates). The game reminds you when you dock with damage |
 | `/cmp g` | Galactic record: what you have scanned so far (two messages, rows 1-4 and 5-8) |
 | `/cmp s` | Status report: Klingons left, days left, starbases |
 | `/cmp t`, `/cmp b` | Course and distance to each Klingon, or to the starbase, in your quadrant |

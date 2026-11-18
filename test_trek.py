@@ -418,6 +418,20 @@ class SystemsTests(unittest.TestCase):
         self.assertAlmostEqual(g.t - t, cost + 0.1)      # B4X added this 8 times
         self.assertTrue(all(d >= 0 for d in g.dmg[1:]))
 
+    def test_dock_hints_at_repairs_once(self):
+        g = self.g
+        add_base(g, 5, 2)
+        g.dmg[3] = -1.0
+        msgs = "\n".join(g.do_srs([]))
+        self.assertIn("/dam to repair", msgs)
+        self.assertLess(g.dmg[3], 0)                     # not repaired for free
+        self.assertNotIn("/dam to repair", "\n".join(g.do_srs([])))
+
+    def test_dock_without_damage_has_no_hint(self):
+        g = self.g
+        add_base(g, 5, 2)
+        self.assertNotIn("/dam to repair", "\n".join(g.do_srs([])))
+
     def test_no_repairs_away_from_a_starbase(self):
         g = self.g
         g.dmg[2] = -1.0

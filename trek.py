@@ -267,12 +267,15 @@ class Game:
         return self.t0 + self.t9 - self.t
 
     def _check_docked(self):
+        was_docked = self.docked
         self.docked = False
         if self.base:
             r, c = self._cell()
             if abs(self.base[0] - r) <= 1 and abs(self.base[1] - c) <= 1:
                 self.docked = True
                 self.energy, self.torps, self.shields = E0, P0, 0
+                if not was_docked and any(self.dmg[i] < 0 for i in range(1, 9)):
+                    self.say("Docked. Damaged: /dam to repair")
 
     def _srs_text(self):
         rows = [" 12345678"]
