@@ -149,10 +149,8 @@ class ZorkSessions:
     def __init__(self, save_dir, engine=None, idle_s=DEFAULT_IDLE_S,
                  max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT,
                  clock=time.time, blocked=None):
-        if engine is None:
-            from zork import Engine as engine
         self.save_dir = save_dir
-        self.engine = engine
+        self._engine = engine           # None: load zork.Engine on first use
         self.idle_s = idle_s
         self.max_chunks = max_chunks
         self.limit = limit
@@ -161,6 +159,21 @@ class ZorkSessions:
         self.live = {}                  # key -> [engine, last_active]
         self.notices = set()            # nodes whose idle session was closed
         self.lock = threading.RLock()
+
+    @property
+    def engine(self):
+        if self._engine is None:
+            from zork import default_engine
+            self._engine = default_engine()
+        return self._engine
+
+    @staticmethod
+    def _close(eng):
+        """Stop a game's background thread, if the engine has one."""
+        try:
+            getattr(eng, "close", lambda: None)()
+        except Exception:               # noqa: BLE001
+            log.exception("Closing a Zork engine failed")
 
     # -- queries
     def in_zork(self, node):
@@ -246,16 +259,14 @@ class ZorkSessions:
                     self._save(key, eng)
             msgs = self._reply(out)
             if eng.finished:
-                del self.live[key]
-                msgs = self._with_tail(msgs, "Game over. /zork starts a new game.")
+                self._close(self.live.pop(key)[0])
+                msgs = msgs + ["Game over. /zork starts a new game."]
             return msgs
         except Exception:                       # noqa: BLE001 - never strand the node
             log.exception("Zork engine failed for %s", key)
-            self.live.pop(key, None)
+            if key in self.live:
+                self._close(self.live.pop(key)[0])
             return ["Zork hit an error and has closed. /zork resumes your last save."]
-
-    def _with_tail(self, msgs, tail):
-        return msgs + [tail]
 
     def _start(self, node, key):
         why = self.blocked(node) if self.blocked else None
@@ -291,7 +302,7 @@ class ZorkSessions:
 
     def _quit(self, key, eng):
         self._save(key, eng)
-        del self.live[key]
+        self._close(self.live.pop(key)[0])
         return ["Zork saved. Goodbye! Normal commands work again; /zork resumes."]
 
     def reap(self, now=None):
@@ -303,7 +314,7 @@ class ZorkSessions:
             for key, (eng, last) in list(self.live.items()):
                 if now - last > self.idle_s:
                     self._save(key, eng)
-                    del self.live[key]
+                    self._close(self.live.pop(key)[0])
                     self.notices.add(key)
                     closed.append(key)
                     log.info("Zork session for %s closed after idle", key)

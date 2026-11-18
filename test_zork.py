@@ -13,7 +13,7 @@ from unittest import mock
 
 import trek
 import zork_session
-from zork import Engine
+from zork.stub import StubEngine as Engine
 from zork_session import ZorkSessions, chunk_reply, clean_output
 
 
@@ -111,6 +111,7 @@ class SessionTests(unittest.TestCase):
 
     def make(self, **kw):
         kw.setdefault("clock", self.clock)
+        kw.setdefault("engine", Engine)
         return ZorkSessions(os.path.join(self.tmp.name, "saves"), **kw)
 
     def say(self, node, text):
@@ -306,6 +307,7 @@ class BridgeTests(unittest.TestCase):
             lat=0, lon=0, near_km=2, announce=None, announce_channel=0)
         self.bridge = self.mb.Bridge(cfg)
         self.bridge.my_id = "!me"
+        self.bridge.zork._engine = Engine           # the four-room stand-in game
         self.sent = []
         self.bridge.send = lambda dest, text: self.sent.append((dest, text))
         self.bridge.sender_position = lambda node: None

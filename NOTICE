@@ -1,0 +1,57 @@
+NOTICE: Dungeon (mainframe Zork) in MeshToys
+============================================
+
+The files zork/engine_gen.py, zork/dtextc.dat, zork/rt.py and zork/dungeon.py, and
+the tools that produced them (tools/c2py.py, tools/crosscheck.py), are part of a
+Python translation of DUNGEON, the mainframe version of ZORK. They are NOT covered
+by any licence MeshToys itself may carry. They are derived from the work of others
+and carry the notice below.
+
+Original notice
+---------------
+Every game file of the C source that this translation is derived from carries:
+
+    COPYRIGHT 1980, INFOCOM COMPUTERS AND COMMUNICATIONS, CAMBRIDGE MA. 02142
+    ALL RIGHTS RESERVED, COMMERCIAL USAGE STRICTLY PROHIBITED
+    WRITTEN BY R. M. SUPNIK
+
+That notice is reproduced here because it applies to the translation too. In
+particular: do not use this part of MeshToys commercially. The copy of the C source
+that was used is described by its maintainers as public domain ("released to the PD
+by Infocom"), but the headers in the files themselves say "all rights reserved", so
+the position is unclear. Please treat the game files as non-commercial, hobby use
+only. If you are a rights holder and want something changed or removed, please open
+an issue.
+
+Credits (from the history file of the C port)
+---------------------------------------------
+* Zork, called Dungeon at the time, was created at the MIT Laboratory for Computer
+  Science (Programming Technology Division) by Tim Anderson, Marc Blank, Bruce
+  Daniels and Dave Lebling, in MDL. It was inspired by Adventure (Will Crowther and
+  Don Woods) and Dungeons and Dragons (Gary Gygax and Dave Arneson).
+* Translated from MDL into FORTRAN IV by "a somewhat paranoid DEC engineer who
+  prefers to remain anonymous" (R. M. Supnik is named in the source headers).
+* DEC FORTRAN to Unix f77: Randy Dietrich, Lynn Cochran and Sig Peterson (1981).
+* PDP to VAX, full save/restore and the debugging package: Bill Randle (1985).
+* Cleanup: John Gilmore (1986) and Bill Randle (1987).
+* f77 to C (11 March 1991): Ian Lance Taylor, using f2c (David Gay, Stu Feldman,
+  Mark Maimone, Norm Schryer). Testing: Andre Srinivasan. MS-DOS port: Jonathan Mark.
+* The 1977 MIT source in the Tapes of Tech Square collection (MIT Libraries,
+  Department of Distinctive Collections, MIT No Attribution licence) is the
+  ancestor of all of this; the maintainers of that collection preserved it.
+* This Python translation: machine-translated from the C port by tools/c2py.py and
+  checked against the C program by tools/crosscheck.py (see README).
+
+Changes made in this translation
+--------------------------------
+* The game logic is translated mechanically; its behaviour is meant to be identical
+  and was cross-checked move for move against the C program.
+* The "!command" shell escape of the C version has been removed (it would let anyone
+  who can message the game run commands on the host).
+* The GDT debugging tool and the in-game SAVE/RESTORE verbs are not available: the
+  host (MeshToys) saves each player's game automatically after every move.
+* zork/dtextc.dat (the game's message text and data tables) is the C port's data file,
+  unchanged.
+
+"Zork" is a trademark of its owner. MeshToys is not affiliated with or endorsed by
+Infocom, Activision, Microsoft, MIT or any of the people named above.

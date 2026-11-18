@@ -9,11 +9,13 @@ An engine is a class with this interface (zork_session.py relies on nothing else
     engine.look()           -> description of the current room
     engine.command(line)    -> the game's reply to one typed command
     engine.finished         -> True once the game is over (won, or dead for good)
+    engine.close()          -> (optional) release resources; called when a session ends
 
-Engine is currently the small stand-in in stub.py. The port of the original
-MIT "Dungeon" (the mainframe Zork) will replace it behind this same interface.
+default_engine() is the port of Dungeon in dungeon.py (see NOTICE for its origin
+and licence). stub.py is a four-room stand-in used by the tests of the session layer.
 """
 
-from .stub import StubEngine as Engine
 
-__all__ = ["Engine"]
+def default_engine():
+    from .dungeon import DungeonEngine
+    return DungeonEngine
