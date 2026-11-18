@@ -439,17 +439,21 @@ class Bridge:
         self.last_public = 0.0
         here = os.path.dirname(os.path.abspath(__file__))
         idle_s = getattr(cfg, "session_idle_min", 30) * 60
-        # A node can be in one game at a time; each says how to leave the other.
+        # A node can be in one game at a time; each says how to leave the others.
+        def blocker(me):
+            def blocked(node):
+                for mode in self.modes:
+                    if mode.name != me and mode.in_session(node):
+                        return "You're in %s. Send /quit to leave, then /%s." % (mode.title, me)
+                return None
+            return blocked
+
         self.zork = zork_session.ZorkSessions(
             getattr(cfg, "zork_save_dir", None) or os.path.join(here, "zork_saves"),
             idle_s=idle_s,
             max_chunks=getattr(cfg, "zork_max_chunks", zork_session.DEFAULT_MAX_CHUNKS),
-            blocked=lambda node: ("You're in Trek. Send /quit to leave, then /zork."
-                                  if self.trek.in_session(node) else None))
-        self.trek = trek_session.TrekSessions(
-            TREK, idle_s=idle_s,
-            blocked=lambda node: ("You're in Zork. Send /quit to leave, then /trek."
-                                  if self.zork.in_session(node) else None))
+            blocked=blocker("zork"))
+        self.trek = trek_session.TrekSessions(TREK, idle_s=idle_s, blocked=blocker("trek"))
         self.modes = (self.zork, self.trek)
 
     def connect(self):

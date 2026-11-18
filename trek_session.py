@@ -28,6 +28,7 @@ INFO = trek.INFO["trek"]
 
 class TrekSessions:
     name = "trek"                       # the command that starts it
+    title = "Trek"
 
     def __init__(self, games, idle_s=DEFAULT_IDLE_S, clock=time.time, blocked=None):
         self.games = games              # trek.TrekGames
@@ -69,8 +70,9 @@ class TrekSessions:
             if low == "/quit":
                 del self.live[key]
                 return ["Trek saved. /trek resumes. Normal commands work again."]
-            if re.match(r"/zork(\s|$)", low):
-                return ["You're in Trek. Send /quit to leave, then /zork."]
+            other = re.match(r"/(zork|adventure)(\s|$)", low)
+            if other:
+                return ["You're in Trek. Send /quit to leave, then /%s." % other.group(1)]
             return self._play(node, key, text)
 
     def _start(self, node, key, text):
