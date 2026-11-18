@@ -97,10 +97,10 @@ def _split_line(line, limit):
     return pieces
 
 
-def chunk_reply(text, max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT):
+def chunk_reply(text, max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT, note=MORE_NOTE):
     """Split text into messages of at most limit bytes, on line then sentence
     boundaries, numbered "(1/3) ..." when there is more than one. At most
-    max_chunks are returned; if text was cut, the last one ends with MORE_NOTE."""
+    max_chunks are returned; if text was cut, the last one ends with note."""
     text = text.strip()
     if not text:
         return []
@@ -125,10 +125,10 @@ def chunk_reply(text, max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT):
     if len(chunks) > max_chunks:
         chunks = chunks[:max(1, max_chunks)]
         last = chunks[-1]
-        while last and _blen(last + "\n" + MORE_NOTE) > body:
+        while last and _blen(last + "\n" + note) > body:
             parts = last.rsplit(None, 1)
             last = parts[0] if len(parts) > 1 else last[:-1]
-        chunks[-1] = last + "\n" + MORE_NOTE if last else MORE_NOTE
+        chunks[-1] = last + "\n" + note if last else note
     n = len(chunks)
     if n == 1:
         return chunks
@@ -149,6 +149,7 @@ class GameSessions:
     title = "Game"
     intro = ""
     others = ()
+    more_note = MORE_NOTE               # ends a reply that had to be cut
 
     def __init__(self, save_dir, engine=None, idle_s=DEFAULT_IDLE_S,
                  max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT,
@@ -232,7 +233,7 @@ class GameSessions:
 
     # -- the commands
     def _reply(self, text):
-        return chunk_reply(self.clean(text), self.max_chunks, self.limit)
+        return chunk_reply(self.clean(text), self.max_chunks, self.limit, self.more_note)
 
     def handle(self, node, text):
         """Handle one message from a node: the /<game> command, or (when the node
@@ -317,7 +318,7 @@ class GameSessions:
         self.live[key] = [eng, self.clock()]
         self.notices.discard(key)
         self._save(key, eng)
-        return chunk_reply(text, self.max_chunks, self.limit)
+        return chunk_reply(text, self.max_chunks, self.limit, self.more_note)
 
     def _quit(self, key, eng):
         self._save(key, eng)

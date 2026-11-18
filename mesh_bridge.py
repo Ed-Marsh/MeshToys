@@ -38,6 +38,7 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 from pubsub import pub
 
+import adventure_session
 import trek
 import trek_session
 import zork_session
@@ -402,8 +403,14 @@ def cmd_zork(cfg, ctx):
     return ctx["bridge"].zork.handle(ctx["sender"], ("/zork " + ctx["args"]).strip())
 
 
+# --- Colossal Cave (see adventure_session.py) -------------------------------
+@command("adventure", info=adventure_session.INFO["adventure"])
+def cmd_adventure(cfg, ctx):
+    return ctx["bridge"].adventure.handle(ctx["sender"], ("/adventure " + ctx["args"]).strip())
+
+
 def _session_input(cfg, ctx):
-    """A node in a game (Zork or Trek): its message is a game command."""
+    """A node in a game (Zork, Adventure or Trek): its message is a game command."""
     for mode in ctx["bridge"].modes:
         if mode.in_session(ctx["sender"]):
             return mode.handle(ctx["sender"], ctx["args"])
@@ -448,13 +455,17 @@ class Bridge:
                 return None
             return blocked
 
+        chunks = getattr(cfg, "zork_max_chunks", None)      # --game-max-chunks
         self.zork = zork_session.ZorkSessions(
             getattr(cfg, "zork_save_dir", None) or os.path.join(here, "zork_saves"),
-            idle_s=idle_s,
-            max_chunks=getattr(cfg, "zork_max_chunks", zork_session.DEFAULT_MAX_CHUNKS),
+            idle_s=idle_s, max_chunks=chunks or zork_session.DEFAULT_MAX_CHUNKS,
             blocked=blocker("zork"))
+        self.adventure = adventure_session.AdventureSessions(
+            getattr(cfg, "adventure_save_dir", None) or os.path.join(here, "adventure_saves"),
+            idle_s=idle_s, max_chunks=chunks or adventure_session.DEFAULT_MAX_CHUNKS,
+            blocked=blocker("adventure"))
         self.trek = trek_session.TrekSessions(TREK, idle_s=idle_s, blocked=blocker("trek"))
-        self.modes = (self.zork, self.trek)
+        self.modes = (self.zork, self.adventure, self.trek)
 
     def connect(self):
         if self.cfg.host:
@@ -526,7 +537,7 @@ class Bridge:
             return
         m = COMMAND_RE.search(text)
         if packet.get("toId") == self.my_id:
-            # A node in a game (Zork or Trek) has every direct message typed into
+            # A node in a game (Zork, Adventure or Trek) has every direct message typed into
             # it, "/" or not. Public messages are never game input.
             for mode in self.modes:
                 if mode.has_notice(sender) and not re.match(
@@ -661,13 +672,18 @@ def main():
                     help="pause between the parts of a multi-message reply (default 3)")
     ap.add_argument("--session-idle-min", "--zork-idle-min", dest="session_idle_min",
                     type=float, default=30, metavar="MIN",
-                    help="close a /zork or /trek session after this many idle minutes "
-                         "(the game is saved). Default 30")
-    ap.add_argument("--zork-max-chunks", type=int, default=zork_session.DEFAULT_MAX_CHUNKS,
-                    metavar="N", help="most messages sent for one Zork reply (default 6)")
+                    help="close a /zork, /adventure or /trek session after this many idle "
+                         "minutes (the game is saved). Default 30")
+    ap.add_argument("--game-max-chunks", "--zork-max-chunks", dest="zork_max_chunks", type=int,
+                    default=None, metavar="N",
+                    help="most messages sent for one game reply (Zork and Adventure). Default "
+                         "6 for Zork and 10 for Adventure, whose longest texts need that many")
     ap.add_argument("--zork-save-dir", default=None, metavar="DIR",
                     help="where Zork saves live, one file per node "
                          "(default zork_saves/ next to the script)")
+    ap.add_argument("--adventure-save-dir", default=None, metavar="DIR",
+                    help="where Adventure saves live, one file per node "
+                         "(default adventure_saves/ next to the script)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
