@@ -140,3 +140,13 @@ Changes made in this version
 
 "Colossal Cave Adventure" is the name of the game by Crowther and Woods. MeshToys is
 not affiliated with or endorsed by any of the people named above.
+
+
+PART 3: Hunt the Wumpus
+=======================
+
+The wumpus/ package implements the rules of Gregory Yob's 1973 game Hunt the Wumpus
+(cave map, hazards, arrow and Wumpus behaviour). The rules were taken from the BASIC
+listing in github.com/RayKV423/original-hunt-the-wumpus (marked Unlicense there), used
+as a specification only. The code and all messages are new; no BASIC code or text was
+copied, so the files here are covered by MeshToys's own licence.

@@ -6,6 +6,7 @@ Small tools that turn a [Meshtastic](https://meshtastic.org) node into a remote-
 - [`trek.py`](#super-star-trek-trekpy): Super Star Trek, a game you play over the mesh through the bridge (sessions are in `trek_session.py`). Tests are in `test_trek.py` and `test_trek_session.py`.
 - [`zork_session.py`](#zork-zork_sessionpy-and-zork): `/zork`, the classic text adventure (Dungeon, the mainframe Zork) played over the mesh. Tests are in `test_zork.py` and `test_dungeon.py`. See [`NOTICE`](NOTICE) for its origin and licence.
 - [`adventure_session.py`](#colossal-cave-adventure-adventure_sessionpy-and-adventure): `/adventure`, Colossal Cave Adventure (Crowther and Woods), the original cave game, played over the mesh. The engine is in `adventure/`, the shared session code (also used by Zork) is in `game_session.py`. Tests are in `test_adventure.py`. See [`NOTICE`](NOTICE) for its origin and licence.
+- [`wumpus_session.py`](#hunt-the-wumpus-wumpus_sessionpy-and-wumpus): `/wumpus`, Gregory Yob's 1973 Hunt the Wumpus, played over the mesh. The engine is in `wumpus/`, the session code is the shared `game_session.py`. Tests are in `test_wumpus.py`.
 
 ## mesh_bridge.py
 
@@ -35,6 +36,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `/trek` | The Super Star Trek game. `/trek` starts or resumes your game and keeps you in it until `/quit`; inside, you type the game's commands without a `/` (`srs`, `nav 3 1.5`). See [Super Star Trek](#super-star-trek-trekpy) below |
 | `/zork` | A text adventure. While you are in it, every message you send is a game command. See [Zork](#zork-zork_sessionpy-and-zork) below |
 | `/adventure` | Colossal Cave Adventure, the original cave game. Works like `/zork`: every message you send is a game command until `/quit`. See [Colossal Cave](#colossal-cave-adventure-adventure_sessionpy-and-adventure) below |
+| `/wumpus` | Hunt the Wumpus (Gregory Yob, 1973). Works like `/zork`: every message you send is a game command until `/quit`. See [Hunt the Wumpus](#hunt-the-wumpus-wumpus_sessionpy-and-wumpus) below |
 
 ### Install
 
@@ -74,6 +76,7 @@ Options:
 - `--game-max-chunks N` (also `--zork-max-chunks`): most messages sent for one Zork or Adventure reply. Default 6 for Zork and 10 for Adventure (its `help` text and its longest room description need 9 or 10).
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
 - `--adventure-save-dir DIR`: where Adventure saves go, one file per node. Default `adventure_saves/` next to the script (ignored by git).
+- `--wumpus-save-dir DIR`: where Wumpus saves go, one file per node. Default `wumpus_saves/` next to the script (ignored by git).
 - `--log-file PATH`: also append the log to a file.
 - `-v`: verbose logging.
 
@@ -121,7 +124,7 @@ A text version of the classic game, played by direct message to the bridge. Each
 
 Your mission: destroy every Klingon before the stardate deadline, resupplying at starbases when you need to. Send `/trek` to start (or resume). That puts you *in Trek*: from then on **every** direct message you send is a game command, typed without a `/` (a leading `/` is ignored), until you send `/quit`. `/trek new` (or just `new` inside the game) abandons the current game and starts another, and `help` (or `/trek help`) gives a quick guide; `help nav` explains one command.
 
-Your game is saved after every command, so leaving with `/quit`, an idle timeout or a restart loses nothing and `/trek` picks it up again. After `--session-idle-min` minutes (default 30) without a message the session is closed quietly, and you are told the next time you message the bridge. A won or lost game also ends the session. You can only be in one game at a time: starting `/zork` or `/adventure` while in Trek (or the reverse) says to `/quit` first. Messages sent to the public channel are never game input. The old `srs`, `nav` ... commands no longer exist outside a session.
+Your game is saved after every command, so leaving with `/quit`, an idle timeout or a restart loses nothing and `/trek` picks it up again. After `--session-idle-min` minutes (default 30) without a message the session is closed quietly, and you are told the next time you message the bridge. A won or lost game also ends the session. You can only be in one game at a time: starting `/zork`, `/adventure` or `/wumpus` while in Trek (or the reverse) says to `/quit` first. Messages sent to the public channel are never game input. The old `srs`, `nav` ... commands no longer exist outside a session.
 
 | Command | What it does |
 |---|---|
@@ -163,7 +166,7 @@ Details:
 - **Per node:** each node ID has its own game and its own save file (`zork_saves/<node>.json`), so several people can play at once. The game is saved after every command, so a restart or crash loses nothing. `/zork` after a restart resumes it.
 - **Direct messages only:** public channel messages are never treated as game input, so a node in Zork can still chat on the channel.
 - **Idle timeout:** after `--session-idle-min` minutes without a message the session is saved and closed quietly. The next time that node messages the bridge it is told, and `/zork` resumes.
-- **One game at a time:** a node can only be in one of Trek, Zork and Adventure. Starting another one (`/trek`, `/zork` or `/adventure`) replies with a short message saying `You're in Zork. Send /quit to leave, then /trek.` and so on. Trek works the same way as Zork: `/trek` to start, free text inside, `/quit` to leave.
+- **One game at a time:** a node can only be in one of Trek, Zork, Adventure and Wumpus. Starting another one (`/trek`, `/zork`, `/adventure` or `/wumpus`) replies with a short message saying `You're in Zork. Send /quit to leave, then /trek.` and so on. Trek works the same way as Zork: `/trek` to start, free text inside, `/quit` to leave.
 - **Errors:** if the game engine fails, the node gets a short error and the session is closed (the last save is kept), so nobody is left stuck in Zork.
 - **Message size:** replies are cleaned (prompts, MORE markers, status lines and Markdown characters removed) and split at line, then sentence boundaries into messages of at most 190 bytes, numbered `(1/3)`. At most `--game-max-chunks` are sent; a longer reply ends with `...(say 'again' / 'look' for more)`.
 
@@ -240,6 +243,36 @@ Not checked: a real radio and node, and a Raspberry Pi Zero W. Everything above 
 To regenerate the data from the C source: `python tools/gen_adventure_data.py path/to/colossal/src`. To repeat the comparison: `python tools/crosscheck_adventure.py path/to/colossal/src --games 2000`.
 
 Run the tests with `python -m unittest test_adventure -v` (all of them: `python -m unittest test_trek test_zork test_trek_session test_dungeon test_adventure`).
+
+## Hunt the Wumpus (wumpus_session.py and wumpus/)
+
+Send `/wumpus` by direct message to start a game, or resume your saved one. It works exactly like [Zork](#zork-zork_sessionpy-and-zork): while you are in it, **every** direct message you send is a game command, including ones starting with `/`. Only these are special:
+
+| Message | What it does |
+|---|---|
+| `/quit` (or `quit`) | Saves and leaves. Normal commands work again |
+| `/wumpus` | Shows your cave again (does not use a turn) |
+| `/wumpus new` | Abandons your game and starts a fresh one |
+
+You are in a cave system of 20 caves, each joined to 3 others (the corners of a dodecahedron). A reply looks like `Cave 5. Tunnels: 1 4 6. You feel a draft. Arrows 5.` Caves next to a hazard warn you: `You smell a Wumpus.`, `You feel a draft.` (a bottomless pit), `Bats rustle nearby.`
+
+| You type | What it does |
+|---|---|
+| `M 5`, `move 5`, `go to 5` | Move to cave 5, if a tunnel leads there |
+| `S 3 7 12`, `shoot 3 7 12` | Shoot an arrow through up to 5 caves. Where the next cave is not joined to the arrow's current one it flies a random way. You cannot name the cave you named two steps ago (arrows are not that crooked) |
+| `M` or `S` alone | The game asks for the cave(s) and your next message is the answer. `cancel` withdraws it |
+| `5` | A single bare number is a move |
+| `look`, `help` | Show the cave; explain the rules |
+
+Upper or lower case, extra words like `to` and `cave` and a leading `/` are all fine. Anything else gets "Didn't understand" and the game carries on.
+
+The rules, as in the original: two caves have bottomless pits (you lose), two have super bats (they drop you in a random cave, which may be dangerous too), and the Wumpus sleeps until you walk into its cave or shoot and miss, when it wakes and moves to a neighbouring cave 3 times in 4. If it ends up with you, or your arrow comes back round to you, you lose. Hit it with an arrow and you win. You have 5 arrows and lose when they run out. When a game ends the reply says so and `/wumpus` starts another. One difference from the original: it asked "same set-up?" for a replay; here a new game always has a new random layout.
+
+Details: one game and one save file per node (`wumpus_saves/<node>.json`, ignored by git), saved after every command and holding the whole board, the arrows left and the state of the random number generator, so a resumed game is exact. Idle timeout, one-game-at-a-time, errors and direct-messages-only are as for Zork. Replies are normally one message of well under 190 bytes. The game is written as a state machine (the original waits for typed input in the middle of a turn; here each message advances the game exactly one step), in `wumpus/engine.py`; tests are in `test_wumpus.py` (`python -m unittest test_wumpus -v`).
+
+### Where the game comes from
+
+*Hunt the Wumpus* was written by **Gregory Yob** (1945-2005) in BASIC in 1973 and published in *Creative Computing* in 1975. The source listing was read from [RayKV423/original-hunt-the-wumpus](https://github.com/RayKV423/original-hunt-the-wumpus) (`wumpus1973basic`, which that repository's author dedicates to the public domain under the Unlicense). It was used as a **specification only**: the cave map, the hazards and how the Wumpus, bats, pits and arrows behave are the game's rules. The code and every message here were written fresh, and no BASIC code or text was copied. The messages are short, re-worded descriptions of the same events.
 
 ## Status
 

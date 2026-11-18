@@ -35,7 +35,7 @@ class AdventureSessions(GameSessions):
     name = "adventure"                  # the command that starts it
     title = "Adventure"
     intro = INTRO
-    others = ("trek", "zork")           # games a player here must /quit first
+    others = ("trek", "zork", "wumpus")           # games a player here must /quit first
     more_note = MORE_NOTE
 
     def __init__(self, save_dir, *args, max_chunks=DEFAULT_MAX_CHUNKS, **kw):

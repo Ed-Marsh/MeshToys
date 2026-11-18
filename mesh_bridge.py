@@ -41,6 +41,7 @@ from pubsub import pub
 import adventure_session
 import trek
 import trek_session
+import wumpus_session
 import zork_session
 
 log = logging.getLogger("mesh_bridge")
@@ -409,6 +410,12 @@ def cmd_adventure(cfg, ctx):
     return ctx["bridge"].adventure.handle(ctx["sender"], ("/adventure " + ctx["args"]).strip())
 
 
+# --- Hunt the Wumpus (see wumpus_session.py) --------------------------------
+@command("wumpus", info=wumpus_session.INFO["wumpus"])
+def cmd_wumpus(cfg, ctx):
+    return ctx["bridge"].wumpus.handle(ctx["sender"], ("/wumpus " + ctx["args"]).strip())
+
+
 def _session_input(cfg, ctx):
     """A node in a game (Zork, Adventure or Trek): its message is a game command."""
     for mode in ctx["bridge"].modes:
@@ -464,8 +471,11 @@ class Bridge:
             getattr(cfg, "adventure_save_dir", None) or os.path.join(here, "adventure_saves"),
             idle_s=idle_s, max_chunks=chunks or adventure_session.DEFAULT_MAX_CHUNKS,
             blocked=blocker("adventure"))
+        self.wumpus = wumpus_session.WumpusSessions(
+            getattr(cfg, "wumpus_save_dir", None) or os.path.join(here, "wumpus_saves"),
+            idle_s=idle_s, blocked=blocker("wumpus"))
         self.trek = trek_session.TrekSessions(TREK, idle_s=idle_s, blocked=blocker("trek"))
-        self.modes = (self.zork, self.adventure, self.trek)
+        self.modes = (self.zork, self.adventure, self.wumpus, self.trek)
 
     def connect(self):
         if self.cfg.host:
@@ -672,7 +682,7 @@ def main():
                     help="pause between the parts of a multi-message reply (default 3)")
     ap.add_argument("--session-idle-min", "--zork-idle-min", dest="session_idle_min",
                     type=float, default=30, metavar="MIN",
-                    help="close a /zork, /adventure or /trek session after this many idle "
+                    help="close a /zork, /adventure, /wumpus or /trek session after this many idle "
                          "minutes (the game is saved). Default 30")
     ap.add_argument("--game-max-chunks", "--zork-max-chunks", dest="zork_max_chunks", type=int,
                     default=None, metavar="N",
@@ -684,6 +694,9 @@ def main():
     ap.add_argument("--adventure-save-dir", default=None, metavar="DIR",
                     help="where Adventure saves live, one file per node "
                          "(default adventure_saves/ next to the script)")
+    ap.add_argument("--wumpus-save-dir", default=None, metavar="DIR",
+                    help="where Wumpus saves live, one file per node "
+                         "(default wumpus_saves/ next to the script)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")

@@ -44,7 +44,7 @@ class ZorkSessions(GameSessions):
     name = "zork"                       # the command that starts it
     title = "Zork"
     intro = INTRO
-    others = ("trek", "adventure")      # games a player here must /quit first
+    others = ("trek", "adventure", "wumpus")      # games a player here must /quit first
 
     in_zork = GameSessions.in_session
 

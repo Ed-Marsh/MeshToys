@@ -608,7 +608,7 @@ class BridgeTests(unittest.TestCase):
             adventure_save_dir=os.path.join(self.tmp.name, "a2"))
         b = self.mb.Bridge(cfg)
         self.assertEqual((b.zork.max_chunks, b.adventure.max_chunks), (4, 4))
-        self.assertEqual([m.name for m in b.modes], ["zork", "adventure", "trek"])
+        self.assertEqual([m.name for m in b.modes], ["zork", "adventure", "wumpus", "trek"])
 
     def test_dm_session_end_to_end(self):
         out = self.msg("!aaaa", "/adventure")
