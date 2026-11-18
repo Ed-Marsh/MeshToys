@@ -193,6 +193,21 @@ class SessionTests(unittest.TestCase):
         self.clock.t += 61
         self.assertEqual(z.reap(), ["!aaaa"])
 
+    def test_zork_new_restarts_inside_and_outside(self):
+        self.say("!aaaa", "/zork")
+        self.say("!aaaa", "n")
+        out = self.say("!aaaa", "/zork new")                       # inside: restart
+        self.assertIn("West of House", out)
+        self.assertNotIn("Resuming", out)
+        self.assertTrue(self.z.in_zork("!aaaa"))
+        self.say("!aaaa", "n")
+        self.say("!aaaa", "/quit")
+        out = self.say("!aaaa", "/zork new")                       # outside: wipes the save
+        self.assertIn("West of House", out)
+        self.assertNotIn("Resuming", out)
+        self.say("!aaaa", "/quit")
+        self.assertIn("Resuming", self.say("!aaaa", "/zork"))      # plain /zork still resumes
+
     def test_starting_clears_pending_notice(self):
         self.say("!aaaa", "/zork")
         self.clock.t += 3600

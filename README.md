@@ -147,12 +147,13 @@ Run the tests with `python -m unittest test_trek test_trek_session -v`.
 
 ## Zork (zork_session.py and zork/)
 
-Send `/zork` by direct message to start a game, or resume your saved one. While you are in Zork, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped, so `/look` works). Only two things are special:
+Send `/zork` by direct message to start a game, or resume your saved one. While you are in Zork, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped, so `/look` works). Only three things are special:
 
 | Message | What it does |
 |---|---|
 | `/quit` | Saves and leaves. Normal commands work again |
 | `/zork` | Shows the current room again |
+| `/zork new` | Abandons your game, deletes its save and starts a fresh one (works inside or outside Zork) |
 
 Details:
 

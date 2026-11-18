@@ -399,7 +399,7 @@ def cmd_trek(cfg, ctx):
 # --- Zork (see zork_session.py) ---------------------------------------------
 @command("zork", info=zork_session.INFO["zork"])
 def cmd_zork(cfg, ctx):
-    return ctx["bridge"].zork.handle(ctx["sender"], "/zork")
+    return ctx["bridge"].zork.handle(ctx["sender"], ("/zork " + ctx["args"]).strip())
 
 
 def _session_input(cfg, ctx):

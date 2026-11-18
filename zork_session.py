@@ -28,8 +28,8 @@ DEFAULT_MAX_CHUNKS = 6
 MORE_NOTE = "...(say 'again' / 'look' for more)"
 INTRO = ("ZORK. Type commands like 'open mailbox' or 'n'. A leading / is ignored. "
          "/zork shows the room again, /quit saves and leaves.")
-INFO = {"zork": "Text adventure. /zork starts or resumes your game. Then every message "
-                "is a game command; /quit saves and leaves, /zork shows the room"}
+INFO = {"zork": "Text adventure. /zork starts or resumes your game, /zork new restarts. "
+                "Then every message is a game command; /quit saves and leaves"}
 
 # --- Cleaning the game's output ---------------------------------------------
 MORE_RE = re.compile(r"^\s*[\[(<*-]*\s*(more|press (any )?key.*|hit return.*)\s*[\])>*-]*\s*$",
@@ -236,12 +236,17 @@ class ZorkSessions:
         text = (text or "").strip()
         low = text.lower()
         with self.lock:
+            fresh = re.fullmatch(r"/zork\s+new", low) is not None
             s = self.live.get(key)
             if s is None:
-                return self._start(node, key)
+                return self._start(node, key, fresh)
             s[1] = self.clock()
             if low == "/quit":
                 return self._quit(key, s[0])
+            if fresh:                           # abandon this game, start another
+                self._close(self.live.pop(key)[0])
+                self._forget_save(key)
+                return self._start(node, key, True)
             if low == "/zork":
                 return self._guard(key, lambda: s[0].look())
             if re.match(r"/trek(\s|$)", low):
@@ -272,12 +277,14 @@ class ZorkSessions:
                 self._close(self.live.pop(key)[0])
             return ["Zork hit an error and has closed. /zork resumes your last save."]
 
-    def _start(self, node, key):
+    def _start(self, node, key, fresh=False):
         why = self.blocked(node) if self.blocked else None
         if why:
             return [why]
         note = ""
         eng, resumed = None, False
+        if fresh:                               # "/zork new": drop any saved game
+            self._forget_save(key)
         try:
             eng = self._load(key)
             resumed = eng is not None
