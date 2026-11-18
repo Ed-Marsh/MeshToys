@@ -26,8 +26,8 @@ log = logging.getLogger("zork")
 DEFAULT_IDLE_S = 30 * 60
 DEFAULT_MAX_CHUNKS = 6
 MORE_NOTE = "...(say 'again' / 'look' for more)"
-INTRO = ("ZORK. Type commands like 'open mailbox' or 'n'. A leading / is ignored. "
-         "/zork shows the room again, /quit saves and leaves.")
+INTRO = ("ZORK (Dungeon, the original mainframe version, not Zork I). Type commands like "
+         "'open mailbox' or 'n'. /zork shows the room again, /quit saves and leaves.")
 INFO = {"zork": "Text adventure. /zork starts or resumes your game, /zork new restarts. "
                 "Then every message is a game command; /quit saves and leaves"}
 
