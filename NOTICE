@@ -1,5 +1,12 @@
-NOTICE: Dungeon (mainframe Zork) in MeshToys
-============================================
+NOTICE: games in MeshToys
+=========================
+
+MeshToys contains two text adventures that come from other people's work: Dungeon
+(the mainframe Zork), described in part 1, and Colossal Cave Adventure, described in
+part 2. They are separate, and their licence positions differ.
+
+PART 1: Dungeon (mainframe Zork)
+================================
 
 The files zork/engine_gen.py, zork/dtextc.dat, zork/rt.py and zork/dungeon.py, and
 the tools that produced them (tools/c2py.py, tools/crosscheck.py), are part of a
@@ -55,3 +62,81 @@ Changes made in this translation
 
 "Zork" is a trademark of its owner. MeshToys is not affiliated with or endorsed by
 Infocom, Activision, Microsoft, MIT or any of the people named above.
+
+
+PART 2: Colossal Cave Adventure
+===============================
+
+The files adventure/engine.py and adventure/data.py, and the tools that produced and
+checked them (tools/gen_adventure_data.py, tools/crosscheck_adventure.py), are a
+Python version of COLOSSAL CAVE ADVENTURE, the game by Will Crowther and Don Woods.
+They are derived from troglobit/adventure (https://github.com/troglobit/adventure,
+Joachim Wiberg), a cleaned-up Unix/Linux version of the BDS C conversion of the game.
+The game text, the map, the vocabulary and the rules are theirs, and are unchanged.
+
+Licence position
+----------------
+The C source carries no copyright notices in its files. The repository it comes from
+contains a LICENSE file with the Unlicense, a public domain dedication:
+
+    This is free and unencumbered software released into the public domain.
+    Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+    software, either in source code form or as a compiled binary, for any purpose,
+    commercial or non-commercial, and by any means.
+
+and debian/copyright in that repository lists the Unlicense for all files, naming as
+copyright holders William Crowther (1975-1977), Don Woods (1977), Jay R. Jaeger
+(1981), Jerry D. Pohl (1990) and James Lummel (1993). That dedication was made by
+the maintainers of the Unix port. The repository's README, however, says of the
+original game:
+
+    "The actual license of this program is unknown, although most people agree that
+    it is likely to be considered to be under the public domain."
+
+So: the Unix port is dedicated to the public domain, and the game as a whole is widely
+treated as public domain, but nobody has seen a licence from its original authors.
+Unlike the Dungeon files above there is no restriction on commercial use. If you are
+a rights holder and want something changed or removed, please open an issue.
+
+Credits (from doc/AUTHORS and debian/copyright of the C port)
+-------------------------------------------------------------
+* Will Crowther: original game for the PDP-10 (Fortran, 1975-77). Willie Crowther
+  in the C port's AUTHORS file.
+* Don Woods: major features added at the Stanford AI Lab, 1977.
+* J. R. Jaeger: conversion to BDS C for Intel 8080 and Zilog Z80 systems (CP/M), 1981.
+* Jerry D. Pohl: UNIX standardisation, 1990.
+* James Lummel: port to QNX 4, with various bug fixes, 1993.
+* Joachim Wiberg: port to Linux with various cleanup (troglobit/adventure).
+* This Python version: a hand-written port of the C logic, with the data (text, map,
+  vocabulary, starting state) extracted from the C headers by
+  tools/gen_adventure_data.py and the whole checked against the C program by
+  tools/crosscheck_adventure.py (see README).
+
+Changes made in this version
+----------------------------
+* The game logic is ported function by function and its behaviour is meant to be
+  identical; it was compared with the C program on hundreds of thousands of commands.
+* Four defects of the C source are fixed, because each one ends or corrupts a game
+  (details at the top of adventure/engine.py):
+  1. room 140 (the maze "Dead end" with the vending machine) could be entered but
+     not left: the C code printed "Fatal error number 42" at the next move, and its
+     arrays had no entry for the room;
+  2. "back" was fatal after many moves (for instance "d" through the grate, then
+     "back"), because it asked for the travel table of exits that lead to a message
+     rather than a room;
+  3. "back" also used a room number as an index into a 17-entry array;
+  4. "look" next to a dwarf left the game waiting for a command at location 0.
+  Typing "log" followed by an object still ends the game with "Fatal error number
+  39", as in the C game (the verb has no message); here that closes the session and
+  keeps the save.
+* The start-up question "Would you like instructions?" is skipped (the game starts
+  as if the answer was no, which gives the lamp 330 turns).
+* The in-game "suspend"/"save" and "restore"/"resume" commands, and the save file in
+  the user's home directory, are gone: the host (MeshToys) saves each player's game
+  automatically after every command. Nothing in the game touches files or the
+  environment.
+* The random numbers come from a small generator whose state is part of the saved
+  game (the C program always seeded rand() with 511).
+
+"Colossal Cave Adventure" is the name of the game by Crowther and Woods. MeshToys is
+not affiliated with or endorsed by any of the people named above.
