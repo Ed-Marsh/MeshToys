@@ -5,6 +5,7 @@ Small tools that turn a [Meshtastic](https://meshtastic.org) node into a remote-
 - [`mesh_bridge.py`](#mesh_bridgepy): the bridge. Runs commands sent over the mesh and replies by direct message.
 - [`trek.py`](#super-star-trek-trekpy): Super Star Trek, a game you play over the mesh through the bridge (sessions are in `trek_session.py`). Tests are in `test_trek.py` and `test_trek_session.py`.
 - [`zork_session.py`](#zork-zork_sessionpy-and-zork): `/zork`, the classic text adventure (Dungeon, the mainframe Zork) played over the mesh. Tests are in `test_zork.py` and `test_dungeon.py`. See [`NOTICE`](NOTICE) for its origin and licence.
+- [`adventure_session.py`](#colossal-cave-adventure-adventure_sessionpy-and-adventure): `/adventure`, Colossal Cave Adventure (Crowther and Woods), the original cave game, played over the mesh. The engine is in `adventure/`, the shared session code (also used by Zork) is in `game_session.py`. Tests are in `test_adventure.py`. See [`NOTICE`](NOTICE) for its origin and licence.
 
 ## mesh_bridge.py
 
@@ -33,6 +34,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `/help` | List of available commands, one per line (admin commands only for admin nodes). `/help name` describes one command, e.g. `/help calc` |
 | `/trek` | The Super Star Trek game. `/trek` starts or resumes your game and keeps you in it until `/quit`; inside, you type the game's commands without a `/` (`srs`, `nav 3 1.5`). See [Super Star Trek](#super-star-trek-trekpy) below |
 | `/zork` | A text adventure. While you are in it, every message you send is a game command. See [Zork](#zork-zork_sessionpy-and-zork) below |
+| `/adventure` | Colossal Cave Adventure, the original cave game. Works like `/zork`: every message you send is a game command until `/quit`. See [Colossal Cave](#colossal-cave-adventure-adventure_sessionpy-and-adventure) below |
 
 ### Install
 
@@ -67,10 +69,11 @@ Options:
 - `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
 - `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
-- `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek and Zork). Default 3.
-- `--session-idle-min MIN` (also `--session-idle-min`): close a Zork or Trek session after this many idle minutes. The game is saved. Default 30.
-- `--zork-max-chunks N`: most messages sent for one Zork reply. Default 6.
+- `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek, Zork and Adventure). Default 3.
+- `--session-idle-min MIN` (also `--zork-idle-min`): close a Zork, Adventure or Trek session after this many idle minutes. The game is saved. Default 30.
+- `--game-max-chunks N` (also `--zork-max-chunks`): most messages sent for one Zork or Adventure reply. Default 6 for Zork and 10 for Adventure (its `help` text and its longest room description need 9 or 10).
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
+- `--adventure-save-dir DIR`: where Adventure saves go, one file per node. Default `adventure_saves/` next to the script (ignored by git).
 - `--log-file PATH`: also append the log to a file.
 - `-v`: verbose logging.
 
@@ -118,7 +121,7 @@ A text version of the classic game, played by direct message to the bridge. Each
 
 Your mission: destroy every Klingon before the stardate deadline, resupplying at starbases when you need to. Send `/trek` to start (or resume). That puts you *in Trek*: from then on **every** direct message you send is a game command, typed without a `/` (a leading `/` is ignored), until you send `/quit`. `/trek new` (or just `new` inside the game) abandons the current game and starts another, and `help` (or `/trek help`) gives a quick guide; `help nav` explains one command.
 
-Your game is saved after every command, so leaving with `/quit`, an idle timeout or a restart loses nothing and `/trek` picks it up again. After `--session-idle-min` minutes (default 30) without a message the session is closed quietly, and you are told the next time you message the bridge. A won or lost game also ends the session. You can only be in one game at a time: `/zork` while in Trek (or `/trek` while in Zork) says to `/quit` first. Messages sent to the public channel are never game input. The old `srs`, `nav` ... commands no longer exist outside a session.
+Your game is saved after every command, so leaving with `/quit`, an idle timeout or a restart loses nothing and `/trek` picks it up again. After `--session-idle-min` minutes (default 30) without a message the session is closed quietly, and you are told the next time you message the bridge. A won or lost game also ends the session. You can only be in one game at a time: starting `/zork` or `/adventure` while in Trek (or the reverse) says to `/quit` first. Messages sent to the public channel are never game input. The old `srs`, `nav` ... commands no longer exist outside a session.
 
 | Command | What it does |
 |---|---|
@@ -160,9 +163,9 @@ Details:
 - **Per node:** each node ID has its own game and its own save file (`zork_saves/<node>.json`), so several people can play at once. The game is saved after every command, so a restart or crash loses nothing. `/zork` after a restart resumes it.
 - **Direct messages only:** public channel messages are never treated as game input, so a node in Zork can still chat on the channel.
 - **Idle timeout:** after `--session-idle-min` minutes without a message the session is saved and closed quietly. The next time that node messages the bridge it is told, and `/zork` resumes.
-- **Trek and Zork:** a node can only be in one of them. `/zork` while in Trek (or `/trek` while in Zork) replies with a short message saying to `/quit` first. Trek works the same way as Zork: `/trek` to start, free text inside, `/quit` to leave.
+- **One game at a time:** a node can only be in one of Trek, Zork and Adventure. Starting another one (`/trek`, `/zork` or `/adventure`) replies with a short message saying `You're in Zork. Send /quit to leave, then /trek.` and so on. Trek works the same way as Zork: `/trek` to start, free text inside, `/quit` to leave.
 - **Errors:** if the game engine fails, the node gets a short error and the session is closed (the last save is kept), so nobody is left stuck in Zork.
-- **Message size:** replies are cleaned (prompts, MORE markers, status lines and Markdown characters removed) and split at line, then sentence boundaries into messages of at most 190 bytes, numbered `(1/3)`. At most `--zork-max-chunks` are sent; a longer reply ends with `...(say 'again' / 'look' for more)`.
+- **Message size:** replies are cleaned (prompts, MORE markers, status lines and Markdown characters removed) and split at line, then sentence boundaries into messages of at most 190 bytes, numbered `(1/3)`. At most `--game-max-chunks` are sent; a longer reply ends with `...(say 'again' / 'look' for more)`.
 
 The game is **Dungeon**, the mainframe Zork (see below), running as pure Python: nothing to install or compile, and it runs the same on Windows, macOS, Linux and a Raspberry Pi (Python 3.9 or newer). Several players use one process; each game runs in its own background thread. The first `/zork` after the bridge starts takes a moment while the game loads. Typing `quit` inside the game asks "Do you wish to leave the game?" like the original and ends it for good; `/quit` just saves and leaves. In-game `save` and `restore` aren't needed (the game saves itself after every move), and the `gdt` debugging console and the `!command` shell escape of the original have been removed.
 
@@ -183,6 +186,60 @@ The game logic in `zork/engine_gen.py` and the data file `zork/dtextc.dat` come 
 To regenerate the engine from the C source: `python tools/c2py.py path/to/c/source zork/engine_gen.py`.
 
 Run the tests with `python -m unittest test_zork test_dungeon -v`.
+
+## Colossal Cave Adventure (adventure_session.py and adventure/)
+
+Send `/adventure` by direct message to start a game, or resume your saved one. This is the original cave game by Will Crowther and Don Woods (1976-77), where text adventures began. It works exactly like [Zork](#zork-zork_sessionpy-and-zork): while you are in it, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped). Only these are special:
+
+| Message | What it does |
+|---|---|
+| `/quit` | Saves and leaves. Normal commands work again |
+| `/adventure` | Shows the current room again: its full description and the objects in it (this does not use up a turn) |
+| `/adventure new` | Abandons your game, deletes its save and starts a fresh one (works inside or outside the game) |
+
+The game understands one or two words: `in`, `get lamp`, `n`, `unlock grate`, `d`. `help` gives hints, `inventory` lists what you carry, `score` shows your score, and `back` returns to the previous place. The original begins by asking "Would you like instructions?"; that question is skipped here, the game starts as if you had said no (the lamp then lasts 330 turns), and the one-line intro says how to leave and that `help` gives hints.
+
+Details:
+
+- **Per node:** each node ID has its own game and its own save file (`adventure_saves/<node>.json`, ignored by git), so several people can play at once. The game is saved after every command, so a restart or crash loses nothing. The save holds exactly the variables the original's `suspend` writes, plus the state of the random number generator, so a resumed game does not replay the same dice (the dwarves and the pirate).
+- **Direct messages only, idle timeout, one game at a time, errors:** as for Zork. Starting `/adventure` while in Trek or Zork (or the reverse) says to `/quit` first.
+- **Questions:** when the game asks a yes/no question ("Do you want me to try to reincarnate you?", "Do you really want to quit now?") the next message you send is the answer. As in the original, anything that does not start with `n` means yes. If you `/quit` while a question is open, your game resumes just before the command that led to it.
+- **Ending:** typing `quit` asks to confirm and then shows your score and ends the game for good; dying three times does too. `suspend`, `save`, `restore` and `load` only say that the game saves itself. `help help` (or `? ?`) prints the word list a page at a time: send any message to see the next page. Typing `log` followed by an object ends the session with `Fatal error number 39`, exactly as the C game does (the verb has no message); the save is kept.
+- **Message size:** as for Zork, but a reply may use up to 10 messages (`--game-max-chunks`) because the `help` text and the longest room description need 9 or 10. A reply that is still too long ends with `...(cut short)`. The game's own wording and line breaks are kept; only the `> ` prompts, the bell, and the padding of the score table and word list are removed.
+
+### How it is built
+
+The game runs as pure Python, with nothing to install or compile, on Windows, macOS, Linux and a Raspberry Pi Zero W (Python 3.9 or newer). The engine, `adventure/engine.py`, is a **hand-written port** of the C source (troglobit/adventure) rather than a machine translation as for Zork. That source is about 3,000 lines of plain C with one `goto` and no pointer tricks, so a function-by-function port that keeps the C structure is readable and easy to compare, and the Dungeon translator was written for a different style of C. The text, the map, the vocabulary and the starting state are not typed in: `tools/gen_adventure_data.py` extracts them from the C headers into `adventure/data.py`.
+
+All the game's state is in one `Game` object, so any number of games run in one process. The C program reads its commands with `fgets()`, so, as for Dungeon, each game runs in its own thread that waits for the next line and hands back what the game printed; the state is captured each time the game is waiting for a command. The engine follows the same small interface as the Zork engine (`zork/__init__.py`), and `game_session.py`, shared with `/zork`, does the per-node saves, idle timeout, splitting for the mesh and error handling.
+
+### Where the game comes from, and the licence
+
+*Colossal Cave Adventure* was written by **Will Crowther** (1975-77, PDP-10), with major features added by **Don Woods** (1977). It was converted to BDS C by **J. R. Jaeger** (1981), standardised for Unix by **Jerry D. Pohl** (1990), ported to QNX by **James Lummel** (1993) and to Linux and cleaned up by **Joachim Wiberg** (troglobit/adventure, the version this one follows). Full credits are in [`NOTICE`](NOTICE), and the same credits are at the top of `adventure/data.py`.
+
+The licence position is not as clean as it could be, so read [`NOTICE`](NOTICE): the C port's repository dedicates the code to the public domain (the Unlicense, so there is no non-commercial restriction as there is for Dungeon), but its README adds that "the actual license of this program is unknown, although most people agree that it is likely to be considered to be under the public domain". The original authors' own licence has not been seen.
+
+### What differs from the C game
+
+- The start-up question is skipped (see above), and `suspend`/`restore` and the `~/.adventure` save file are replaced by the automatic save. The game never touches files or the environment.
+- The random numbers come from a small generator whose state is saved with the game (the C program always seeded `rand()` with 511, so every game rolled the same dice).
+- Input lines are cut at 79 characters and the rest is dropped (the C program would have used it as the next command).
+- Four defects of the C source that end or corrupt a game are fixed, listed in `NOTICE` and at the top of `adventure/engine.py`: room 140 (the maze "Dead end" with the vending machine) could be entered but not left, because the C code printed `Fatal error number 42` at the next move; `back` was fatal after many moves (for example going down through the grate and then `back`) and used a room number as an array index; and `look` next to a dwarf left the game waiting at location 0. Everywhere else the port prints exactly what the C game prints, including its oddities (for example `say xyzzy` only answers "Okay." when the keys are at hand).
+
+### How it was checked
+
+`tools/crosscheck_adventure.py` builds the original C program (you need the C source and `python -m ziglang`, i.e. `pip install ziglang`) with the same random number generator as the Python engine, and then:
+
+1. dumps every data table (descriptions, messages, travel table, vocabulary, starting state) as the C compiler sees it and compares them with `adventure/data.py`: they are identical;
+2. plays thousands of random scripted games on both and compares every character of output. Games start at the beginning, or from random states (random place, carried objects, dwarves, treasure counts, clocks and lamp) so that the dwarves, the pirate, death and reincarnation, the lamp running out and the closing of the cave are reached; the commands are chosen from the room's real exits and the objects present as well as at random. The C copy used for this carries only the four bug fixes above and a hook to set the starting state. The final run was 8,000 games and 911,924 commands, with no difference in any character of output.
+
+Recorded games from the C program (a walk through the opening, a dwarf attack, death and reincarnation, the pirate, the cave closing and closed, the lamp dimming, the final score) are kept in `test_data/adventure_golden.json` and replayed by the tests, so the check runs without the C source. The unit tests also cover the engine on its own, saving and resuming (including the random state), the session layer with two nodes at once, idle timeouts, engine failures, the exclusion of Trek and Zork, and public messages never reaching the game.
+
+Not checked: a real radio and node, and a Raspberry Pi Zero W. Everything above ran on Windows with Python 3.14.
+
+To regenerate the data from the C source: `python tools/gen_adventure_data.py path/to/colossal/src`. To repeat the comparison: `python tools/crosscheck_adventure.py path/to/colossal/src --games 2000`.
+
+Run the tests with `python -m unittest test_adventure -v` (all of them: `python -m unittest test_trek test_zork test_trek_session test_dungeon test_adventure`).
 
 ## Status
 

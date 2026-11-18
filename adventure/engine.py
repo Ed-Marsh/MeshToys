@@ -208,14 +208,12 @@ class Game:
 
     def run(self, resumed=False):
         """The main loop: while (!saveflg) turn(). A resumed game is waiting for a
-        command, so it skips the first half of the turn."""
-        try:
-            if resumed:
-                self.turn_command()
-            while True:
-                self.turn()
-        except (GameExit, Bug):
-            raise
+        command, so it skips the first half of the turn. It ends by raising GameExit
+        (the game is over or was closed) or Bug."""
+        if resumed:
+            self.turn_command()
+        while True:
+            self.turn()
 
     def yes(self, msg1, msg2, msg3):
         """Ask a yes/no question; anything not starting with n is yes."""

@@ -1,0 +1,118 @@
+[
+{
+"name": "walk",
+"seed": 511,
+"lines": [
+"in",
+"get lamp",
+"get keys",
+"get food",
+"get bottle",
+"out",
+"s",
+"s",
+"s",
+"unlock grate",
+"open grate",
+"d",
+"on",
+"inventory",
+"w",
+"get cage",
+"w",
+"get rod",
+"back",
+"xyzzy",
+"help",
+"score",
+"quit",
+"y"
+],
+"scenario": "",
+"output": "You are standing at the end of a road before a small brick\nbuilding.  Around you is a forest.  A small stream flows out\nof the building and down a gully.\n> You are inside a building, a well house for a large spring.\nThere are some keys on the ground here.\nThere is a shiny brass lamp nearby.\nThere is tasty food here.\nThere is a bottle of water here.\n> OK\n> OK\n> OK\n> OK\n> You're at end of road again.\n> You are in a valley in the forest beside a stream tumbling\nalong a rocky bed.\n> At your feet all the water of the stream splashes into a\n2-inch slit in the rock.  Downstream the streambed is bare rock.\n> You are in a 20-foot depression floored with bare dirt.  Set\ninto the dirt is a strong steel grate mounted in concrete.\nA dry streambed leads into the depression.\nThe grate is locked.\n> The grate is now unlocked.\n> It was already unlocked.\n> You are in a small chamber beneath a 3x3 steel grate to the\nsurface.  A low crawl over cobbles leads inward to the West.\nThe grate is open.\n> Your lamp is now on.\n> You are currently holding the following:\nSet of keys.\nBrass lantern\nTasty food\nSmall bottle\nWater in the bottle.\n> You are crawling over cobbles in a low passage.  There is a\ndim light at the east end of the passage.\nThere is a small wicker cage discarded nearby.\n> OK\n> You are in a debris room filled with stuff washed in from the\nsurface.  A low wide passage with cobbles becomes plugged\nwith mud and debris here, but an awkward canyon leads\nupward and west.  A note on the wall says:\n       Magic Word \"XYZZY\"\nA three foot black rod with a rusty star on an end lies nearby.\n> OK\n> You're in cobble crawl.\n> Nothing happens.\n> I know of places, actions, and things.  Most of my vocabulary \ndescribes places and is used to move you there.  To move, try words \nlike forest, building, downstream, enter, east, west, north, south, up \nor down.  \nI know about a few special objects, like a black rod hidden in the \ncave.  These objects can be manipulated using some of the action words \nI know. Usually you will need to give both the object and action words \n(In either order), but sometimes I can infer the object from the verb \nalone.  Some objects also imply verbs; in particular, \"inventory\" \nimplies \"take inventory\", which causes me to give you a list of what \nyou're carrying.\nThe objects have side effects; for instance, the rod scares the bird. \nUsually people having trouble moving just need to try a few more \nwords.  Usually people trying unsuccessfully to manipulate an object \nare attempting something beyond their (or my!) capabilities and should \ntry a completely different tack.\nTo speed the game up, you can sometimes move long distances with a \nsingle word.  For example, \"building\" usually gets you to the building \nfrom anywhere above ground except when lost in the forest.  Also, note \nthat cave passages turn a lot, and that leaving a room to the north \ndoes not guarantee entering the next from the south. Good luck!\n> Treasures:          0\nSurvival:           30\nScore:              36\n> Do you really want to quit now?\n> OK\nTreasures:          0\nSurvival:           30\nScore:              32\n"
+},
+{
+"name": "dwarf-attack",
+"seed": 511,
+"lines": [
+"no"
+],
+"output": "There is a threatening little dwarf in the room with you!\nOne sharp, nasty knife is thrown at you!\nIt gets you!\nNow you've really done it!  I'm out of orange smoke!  You\ndon't expect me to do a decent reincarnation without any\norange smoke, do you?\n> OK\nTreasures:          0\nGetting well in:    25\nScore:              31\n",
+"scenario": "loc=67;newloc=67;oldloc=79;oldloc2=79;holding=0;dflag=3;numdie=2;knfloc=0;place[20]=67;dloc[1]=0;dseen[1]=0;dloc[2]=105;dseen[2]=0;dloc[4]=67;dseen[4]=0"
+},
+{
+"name": "death-and-reincarnation",
+"seed": 511,
+"lines": [
+"enter",
+"yes",
+"cavern",
+"mist"
+],
+"output": "There are 2 threatening little dwarves in the room with you!\n2 of them throw knives at you!!\nOne of them gets you!\nYou clumsy oaf, you've done it again!  I don't know how long\nI can keep this up.  Do you want me to try reincarnating\nyou again?\n> Okay, now where did I put my orange smoke? ... > POOF! <\nEverything disappears in a dense cloud of orange smoke.\n> What?\n> I don't know how to apply that word here.\nThere are 2 threatening little dwarves in the room with you!\n2 of them throw knives at you!!\nOne of them gets you!\nNow you've really done it!  I'm out of orange smoke!  You\ndon't expect me to do a decent reincarnation without any\norange smoke, do you?\n> Okay, If you're so smart, do it yourself!  I'm leaving!\nTreasures:          0\nGetting well in:    25\nScore:              31\n",
+"scenario": "loc=3;newloc=3;oldloc=40;oldloc2=40;holding=1;dflag=3;tally=1;clock1=1;clock2=50;numdie=1;prop[2]=0;place[2]=-1;place[51]=3;place[14]=3;dloc[1]=46;dseen[1]=1;dloc[3]=3;dseen[3]=1;dloc[4]=3;dseen[4]=0;dloc[5]=0;dseen[5]=0"
+},
+{
+"name": "pirate",
+"seed": 511,
+"lines": [
+"exit",
+"foo lamp"
+],
+"output": "Out from the shadows behind you pounces a bearded pirate!\n\"Har, har\" he chortles, \"I'll just take all this booty and\nhide it away with me chest deep in the maze!\".  He snatches\nyour treasure and vanishes into the gloom.\n> You fell into a pit and broke every bone in your body!\nNow you've really done it!  I'm out of orange smoke!  You\ndon't expect me to do a decent reincarnation without any\norange smoke, do you?\n> Okay, If you're so smart, do it yourself!  I'm leaving!\nTreasures:          2\nGetting well in:    25\nScore:              33\n",
+"scenario": "loc=29;newloc=29;oldloc=52;oldloc2=52;holding=5;dflag=2;numdie=2;prop[2]=0;place[51]=-1;place[64]=-1;place[15]=-1;place[14]=-1;place[2]=-1;prop[51]=0;dloc[4]=27;dseen[4]=0;dloc[6]=29;dseen[6]=0"
+},
+{
+"name": "cave-closing-soon",
+"seed": 511,
+"lines": [
+"above"
+],
+"output": "A sepulchral voice reverberating through the cave says:\n\"Cave closing soon.  All adventurers exit immediately\nthrough main office.\"\n> You fell into a pit and broke every bone in your body!\nIt looks as though you're dead.  Well, seeing as how it's so\nclose to closing time anyway, I think we'll just call it a day.\nTreasures:          2\nSurvival:           10\nGetting well in:    25\nMasters section:    25\nScore:              68\n",
+"scenario": "loc=56;newloc=56;oldloc=34;oldloc2=34;holding=2;dflag=1;tally=0;clock1=1;clock2=1;numdie=1;foobar=2;prop[2]=0;place[5]=-1;place[2]=-1;place[19]=56;place[58]=56;dloc[4]=56;dseen[4]=1;dloc[6]=0;dseen[6]=1"
+},
+{
+"name": "cave-closed",
+"seed": 511,
+"lines": [
+"debris",
+"eggs fight",
+"drop rod",
+"",
+"ignite oyster",
+"read tablet",
+"jar follow",
+"devour jar",
+"kill dwarves"
+],
+"output": "> I don't know how to apply that word here.\nA sepulchral voice reverberating through the cave says:\n\"Cave closing soon.  All adventurers exit immediately\nthrough main office.\"\n> I see no eggs here.\nThe sepulchral voice entones, \"The cave is now closed.\"  As\nthe echoes fade, there is a blinding flash of light (and a\nsmall puff of orange smoke). . . . \nAs your eyes refocus you look around and find...\n> You aren't carrying it!\n> > Blasting requires dynamite.\n> I see no tablet here.\n> Where?\n> Don't be ridiculous!\n> It looks as though you're dead.  Well, seeing as how it's so\nclose to closing time anyway, I think we'll just call it a day.\nTreasures:          2\nSurvival:           20\nGetting well in:    25\nMasters section:    25\nBonus:              10\nScore:              88\n",
+"scenario": "loc=64;newloc=64;oldloc=118;oldloc2=118;holding=0;dflag=0;tally=0;clock1=2;clock2=1;place[43]=64;dloc[2]=64;dseen[2]=1;dloc[3]=64;dseen[3]=0;dloc[4]=73;dseen[4]=1;dloc[5]=64;dseen[5]=1"
+},
+{
+"name": "lamp-getting-dim",
+"seed": 511,
+"lines": [
+"go axe",
+"disturb troll",
+"steal",
+"off platinum",
+"drink jewels",
+"foo jewelry",
+"throw",
+"quit",
+"stream"
+],
+"output": "Your lamp is getting dim.. You'd best start wrapping this up,\nunless you can find some fresh batteries.  I seem to recall\nthere's a vending machine in the maze.  Bring some coins\nwith you.\n> Where?\n> I see no troll here.\n> steal what?\n> Your lamp is now off.\n> Don't be ridiculous!\n> There is a threatening little dwarf in the room with you!\n> throw what?\n> Do you really want to quit now?\n> OK\nTreasures:          0\nSurvival:           30\nGetting well in:    25\nScore:              57\n",
+"scenario": "loc=29;newloc=29;oldloc=113;oldloc2=113;holding=6;dflag=1;limit=2;prop[2]=0;place[60]=-1;place[28]=-1;place[19]=-1;place[52]=-1;place[14]=-1;place[2]=-1;place[4]=29;dloc[2]=0;dseen[2]=0;dloc[5]=50;dseen[5]=0"
+},
+{
+"name": "score-at-the-end",
+"seed": 511,
+"lines": [
+"quit",
+"capture lantern"
+],
+"output": "> Do you really want to quit now?\n> OK\nTreasures:          0\nSurvival:           30\nGetting well in:    25\nScore:              57\n",
+"scenario": "loc=55;newloc=55;oldloc=112;oldloc2=112;holding=2;dflag=1;prop[2]=1;place[5]=-1;place[2]=-1;dloc[4]=79;dseen[4]=1;dloc[6]=98;dseen[6]=0"
+}
+]

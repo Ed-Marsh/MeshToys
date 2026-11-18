@@ -36,6 +36,7 @@ sys.path.insert(0, ROOT)
 
 from adventure import data as D                      # noqa: E402
 from adventure.engine import AdventureEngine, Bug    # noqa: E402
+from adventure.testkit import apply_scenario, scenario_text   # noqa: E402
 
 REFRAND = """
 static unsigned long s = 1;
@@ -319,18 +320,6 @@ def make_scenario(rng):
     return items, arrays
 
 
-def scenario_text(items, arrays):
-    parts = ["%s=%d" % kv for kv in items.items()]
-    parts += ["%s[%d]=%d" % (n, i, v) for (n, i), v in arrays.items()]
-    return ";".join(parts)
-
-
-def apply_scenario(game, items, arrays):
-    for k, v in items.items():
-        setattr(game, k, v)
-    for (n, i), v in arrays.items():
-        getattr(game, n)[i] = v
-
 
 def pick_command(rng, g):
     """The next command, chosen from the state of the Python game."""
@@ -378,6 +367,21 @@ OPENINGS = [
 ]
 
 
+# Events worth a golden transcript: (name, text that shows it in the output)
+GOLDEN_EVENTS = [
+    ("dwarf-attack", "One sharp, nasty knife is thrown at you"),
+    ("death-and-reincarnation", "POOF"),
+    ("pirate", "bearded pirate"),
+    ("cave-closing-soon", "Cave closing soon"),
+    ("cave-closed", "The cave is now closed"),
+    ("lamp-getting-dim", "Your lamp is getting dim"),
+    ("score-at-the-end", "Treasures:"),
+]
+WALK = ["in", "get lamp", "get keys", "get food", "get bottle", "out", "s", "s", "s", "unlock grate",
+        "open grate", "d", "on", "inventory", "w", "get cage", "w", "get rod", "back", "xyzzy", "help",
+        "score", "quit", "y"]
+
+
 def run_python(seed, scenario, moves, rng):
     """Play a random game on the Python engine, recording the commands."""
     def setup(g):
@@ -397,7 +401,6 @@ def run_python(seed, scenario, moves, rng):
                 print("PYTHON ENGINE HUNG on %r after %r (scenario %r)" % (
                     cmd, lines[-6:-1], scenario_text(*scenario) if scenario else ""))
                 import traceback
-                import threading
                 for tid, fr in sys._current_frames().items():
                     if tid == eng.thread.ident:
                         traceback.print_stack(fr)
@@ -444,6 +447,9 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--record", default=None, metavar="DIR", help="write failing games here")
     ap.add_argument("--keep", default=None, metavar="DIR", help="build here and keep the C program")
+    ap.add_argument("--golden", default=None, metavar="FILE",
+                    help="write the shortest matching game for each event, with the C "
+                         "program's output, as golden transcripts for the unit tests")
     args = ap.parse_args()
 
     tmp = None
@@ -467,6 +473,7 @@ def main():
              "fatal": 0}
     c_preamble = None
     fatal_kinds = {}
+    golden = {}
     for n in range(args.games):
         scenario = None
         if n % 4 != 0:
@@ -489,6 +496,11 @@ def main():
                 stats[key] += 1
         ended += 1 if "Score:" in py else 0
         pos = first_diff(py, c_out)
+        if pos < 0 and args.golden and "Fatal error" not in c_out:
+            for tag, needle in GOLDEN_EVENTS:
+                if needle in c_out and (tag not in golden or len(c_out) < len(golden[tag]["output"])):
+                    golden[tag] = {"name": tag, "seed": seed, "lines": lines, "output": c_out,
+                                   "scenario": scenario_text(*scenario) if scenario else ""}
         if pos >= 0:
             fails += 1
             print("MISMATCH in game %d (scenario %r, %d commands) at char %d:" % (
@@ -506,6 +518,15 @@ def main():
     print("coverage (games whose output mentions): %s" % ", ".join(
         "%s %d" % kv for kv in stats.items()))
     print("fatal errors by number: %s" % fatal_kinds)
+    if args.golden:
+        entries = [golden[tag] for tag, _ in GOLDEN_EVENTS if tag in golden]
+        c_out, _, _ = run_c(exe, work, WALK, "")
+        entries.insert(0, {"name": "walk", "seed": 511, "lines": WALK, "scenario": "",
+                           "output": c_out[len(c_preamble):]})
+        with open(args.golden, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(entries, fh, indent=0)
+        print("golden transcripts: %s" % ", ".join(
+            "%s (%d commands)" % (e["name"], len(e["lines"])) for e in entries))
     if tmp:
         tmp.cleanup()
     return 1 if fails or bad else 0
