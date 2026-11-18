@@ -133,7 +133,7 @@ Every reply is split into messages of at most 190 bytes. Longer replies (for exa
 
 The map symbols were chosen by testing in the Meshtastic Android app, which uses a proportional font and renders Markdown. `.` and `-` are too narrow and make the rows drift, `_` is eaten as italics, and Markdown tables are not rendered (the `|` characters show as text). `+` and `S` have similar widths and line up. If you use a different client, change `DISPLAY` near the top of `trek.py`.
 
-This is a rewrite of a B4J port of the 1978 BASIC game rather than a straight translation. Compared with that version it fixes: random numbers that never produced row/column 8 (so nothing ever sat in those sectors or quadrants), three-Klingon quadrants that could never occur, and starbases that were half as common as intended; phaser damage that ignored how far away the Klingon was; Klingons killed by torpedo that stayed alive; torpedoes that couldn't destroy a starbase; courses between whole numbers (and 8.5 to 8.99) being rounded wrongly; quadrant crossings charging energy and time twice; repairs that advanced the clock eight times; and the missing distance reading for some directions in the distance calculator. A perimeter stop no longer drops the ship on top of a star.
+This is a rewrite of a B4J port of the 1978 BASIC game rather than a straight translation. 
 
 Run the tests with `python -m unittest test_trek -v`.
 
