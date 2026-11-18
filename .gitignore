@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 mesh.log
 trek_games.json
+zork_saves/

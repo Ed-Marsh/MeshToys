@@ -39,12 +39,15 @@ import meshtastic.tcp_interface
 from pubsub import pub
 
 import trek
+import zork_session
 
 log = logging.getLogger("mesh_bridge")
 
 PUBLIC_COOLDOWN_S = 60         # minimum gap between public sends
 MAX_REPLY_BYTES = 200          # Meshtastic text payload limit is ~233 bytes
 REPLY_GAP_S = 3.0              # pause between the parts of a multi-message reply
+ZORK_INPUT = "\x00zork"          # internal job names (never match a typed /command)
+ZORK_NOTICE = "\x00zork-notice"
 # "/name" at the very start of the message (so a "/" used for division in
 # the middle of text never matches). Everything after the name, to the end of the
 # message, is args.
@@ -389,6 +392,8 @@ TREK = trek.TrekGames(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 def _trek_handler(verb):
     def handler(cfg, ctx):
+        if ctx["bridge"].zork.in_zork(ctx["sender"]):
+            return "You're in Zork. Send /quit to leave, then /trek."
         return TREK.command(ctx["sender"], verb, ctx["args"])
     handler.__name__ = "cmd_" + verb
     return handler
@@ -396,6 +401,19 @@ def _trek_handler(verb):
 
 for _verb, _info in trek.INFO.items():
     command(_verb, info=_info)(_trek_handler(_verb))
+
+
+# --- Zork (see zork_session.py) ---------------------------------------------
+@command("zork", info=zork_session.INFO["zork"])
+def cmd_zork(cfg, ctx):
+    return ctx["bridge"].zork.handle(ctx["sender"], "/zork")
+
+
+# Jobs the bridge queues itself, so they are not in COMMANDS (or /help).
+INTERNAL = {
+    ZORK_INPUT: lambda cfg, ctx: ctx["bridge"].zork.handle(ctx["sender"], ctx["args"]),
+    ZORK_NOTICE: lambda cfg, ctx: ctx["bridge"].zork.take_notice(ctx["sender"]),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +431,16 @@ class Bridge:
         self.lost = threading.Event()
         self.admins = {a.lower() for a in (cfg.admin or [])}
         self.last_public = 0.0
+        here = os.path.dirname(os.path.abspath(__file__))
+        trek_window = getattr(cfg, "zork_idle_min", 30) * 60
+        self.zork = zork_session.ZorkSessions(
+            getattr(cfg, "zork_save_dir", None) or os.path.join(here, "zork_saves"),
+            idle_s=trek_window,
+            max_chunks=getattr(cfg, "zork_max_chunks", zork_session.DEFAULT_MAX_CHUNKS),
+            blocked=lambda node: (
+                "You're in Trek. Finish that game or leave it idle for %d min, "
+                "then /zork." % round(trek_window / 60)
+                if TREK.active(node, trek_window) else None))
 
     def connect(self):
         if self.cfg.host:
@@ -483,6 +511,15 @@ class Bridge:
             log.info("Ignoring %s (not in allow list)", sender)
             return
         m = COMMAND_RE.search(text)
+        if packet.get("toId") == self.my_id:
+            # A node in Zork has every direct message typed into its game, "/"
+            # or not. Public messages are never game input.
+            if self.zork.has_notice(sender) and not re.match(r"\s*/zork\b", text, re.I):
+                self.jobs.put((sender, ZORK_NOTICE, "", packet))
+            if self.zork.in_zork(sender):
+                log.info("%s -> zork: %s", sender, text[:100])
+                self.jobs.put((sender, ZORK_INPUT, text, packet))
+                return
         if not m:
             return
         name = m.group(1).lower()
@@ -497,7 +534,7 @@ class Bridge:
     def worker(self):
         while True:
             sender, name, args, packet = self.jobs.get()
-            handler = COMMANDS.get(name)
+            handler = INTERNAL.get(name) or COMMANDS.get(name)
             is_admin = sender.lower() in self.admins
             if handler is not None and name in ADMIN_COMMANDS and not is_admin:
                 # Don't reveal or answer admin commands to anyone else.
@@ -519,7 +556,7 @@ class Bridge:
                 parts = reply if isinstance(reply, (list, tuple)) else [reply]
                 for i, part in enumerate(parts):
                     if i:
-                        time.sleep(REPLY_GAP_S)
+                        time.sleep(self.cfg.reply_gap)
                     self.send(sender, part)
 
     def send_public(self, text):
@@ -545,9 +582,13 @@ class Bridge:
 
     def run(self):
         self.start()
+        last_reap = 0.0
         try:
             while True:
                 time.sleep(1)
+                if time.time() - last_reap > 30:
+                    last_reap = time.time()
+                    self.zork.reap()
                 if self.lost.is_set():
                     self.reconnect()
         except KeyboardInterrupt:
@@ -599,6 +640,16 @@ def main():
                          "short name and {id} with its ID")
     ap.add_argument("--announce-channel", type=int, default=0, metavar="N",
                     help="channel index for public sends (default 0, the primary)")
+    ap.add_argument("--reply-gap", type=float, default=REPLY_GAP_S, metavar="SECS",
+                    help="pause between the parts of a multi-message reply (default 3)")
+    ap.add_argument("--zork-idle-min", type=float, default=30, metavar="MIN",
+                    help="close and save a /zork session after this many idle minutes "
+                         "(also how long a /trek game blocks /zork). Default 30")
+    ap.add_argument("--zork-max-chunks", type=int, default=zork_session.DEFAULT_MAX_CHUNKS,
+                    metavar="N", help="most messages sent for one Zork reply (default 6)")
+    ap.add_argument("--zork-save-dir", default=None, metavar="DIR",
+                    help="where Zork saves live, one file per node "
+                         "(default zork_saves/ next to the script)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")

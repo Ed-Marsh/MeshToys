@@ -20,6 +20,7 @@ import math
 import os
 import random
 import tempfile
+import time
 
 log = logging.getLogger("trek")
 
@@ -747,6 +748,7 @@ class TrekGames:
         self.path = path
         self.rng = rng
         self.games = {}
+        self.touched = {}      # node key -> time of its last command (not saved)
         self._load()
 
     def _load(self):
@@ -775,10 +777,20 @@ class TrekGames:
         except OSError as e:
             log.warning("Could not save games: %s", e)
 
+    def active(self, sender, window, now=None):
+        """True if the node has an unfinished game and sent a trek command within
+        the last `window` seconds. /trek has no explicit quit, so this is what
+        "in Trek" means (used to keep a node out of /zork at the same time)."""
+        key = sender.lower()
+        g, t = self.games.get(key), self.touched.get(key)
+        now = time.time() if now is None else now
+        return bool(g and not g.over and t is not None and now - t < window)
+
     def command(self, sender, verb, argstr):
         """Run a game command for a node; returns a list of messages."""
         args = (argstr or "").split()
         key = sender.lower()
+        self.touched[key] = time.time()
         g = self.games.get(key)
         if verb == "trek":
             sub = args[0].lower() if args else ""

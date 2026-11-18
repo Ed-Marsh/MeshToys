@@ -4,6 +4,7 @@ Small tools that turn a [Meshtastic](https://meshtastic.org) node into a remote-
 
 - [`mesh_bridge.py`](#mesh_bridgepy): the bridge. Runs commands sent over the mesh and replies by direct message.
 - [`trek.py`](#super-star-trek-trekpy): Super Star Trek, a game you play over the mesh through the bridge. Tests are in `test_trek.py`.
+- [`zork_session.py`](#zork-zork_sessionpy-and-zork): `/zork`, a text adventure played over the mesh. Tests are in `test_zork.py`.
 
 ## mesh_bridge.py
 
@@ -31,6 +32,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `/ping` | `pong` and the PC's time |
 | `/help` | List of available commands, one per line (admin commands only for admin nodes). `/help name` describes one command, e.g. `/help calc` |
 | `/trek`, `/srs`, `/lrs`, `/nav`, `/pha`, `/tor`, `/shi`, `/dam`, `/cmp` | The Super Star Trek game. See [Super Star Trek](#super-star-trek-trekpy) below. These are listed in `/help` like any other command |
+| `/zork` | A text adventure. While you are in it, every message you send is a game command. See [Zork](#zork-zork_sessionpy-and-zork) below |
 
 ### Install
 
@@ -65,6 +67,10 @@ Options:
 - `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
 - `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
+- `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek and Zork). Default 3.
+- `--zork-idle-min MIN`: close and save a Zork session after this many idle minutes. Default 30. A Trek game also blocks `/zork` for this long after its last command.
+- `--zork-max-chunks N`: most messages sent for one Zork reply. Default 6.
+- `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
 - `--log-file PATH`: also append the log to a file.
 - `-v`: verbose logging.
 
@@ -136,6 +142,32 @@ The map symbols were chosen by testing in the Meshtastic Android app, which uses
 This is a rewrite of a B4J port of the 1978 BASIC game rather than a straight translation. Compared with that version it fixes: random numbers that never produced row/column 8 (so nothing ever sat in those sectors or quadrants), three-Klingon quadrants that could never occur, and starbases that were half as common as intended; phaser damage that ignored how far away the Klingon was; Klingons killed by torpedo that stayed alive; torpedoes that couldn't destroy a starbase; courses between whole numbers (and 8.5 to 8.99) being rounded wrongly; quadrant crossings charging energy and time twice; repairs that advanced the clock eight times; and the missing distance reading for some directions in the distance calculator. A perimeter stop no longer drops the ship on top of a star.
 
 Run the tests with `python -m unittest test_trek -v`.
+
+## Zork (zork_session.py and zork/)
+
+Send `/zork` by direct message to start a game, or resume your saved one. While you are in Zork, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped, so `/look` works). Only two things are special:
+
+| Message | What it does |
+|---|---|
+| `/quit` | Saves and leaves. Normal commands work again |
+| `/zork` | Shows the current room again |
+
+Details:
+
+- **Per node:** each node ID has its own game and its own save file (`zork_saves/<node>.json`), so several people can play at once. The game is saved after every command, so a restart or crash loses nothing. `/zork` after a restart resumes it.
+- **Direct messages only:** public channel messages are never treated as game input, so a node in Zork can still chat on the channel.
+- **Idle timeout:** after `--zork-idle-min` minutes without a message the session is saved and closed quietly. The next time that node messages the bridge it is told, and `/zork` resumes.
+- **Trek and Zork:** a node can't be in both. `/trek` has no quit command, so a node counts as "in Trek" if it has an unfinished game and sent a Trek command within the idle timeout. `/zork` during that time says so, and `/trek` while in Zork says to `/quit` first.
+- **Errors:** if the game engine fails, the node gets a short error and the session is closed (the last save is kept), so nobody is left stuck in Zork.
+- **Message size:** replies are cleaned (prompts, MORE markers, status lines and Markdown characters removed) and split at line, then sentence boundaries into messages of at most 190 bytes, numbered `(1/3)`. At most `--zork-max-chunks` are sent; a longer reply ends with `...(say 'again' / 'look' for more)`.
+
+The session layer works with any engine that follows the small interface described in `zork/__init__.py`. **At the moment the engine is a four-room stand-in** (`zork/stub.py`), used to build and test everything else. The real game is being ported to Python next, with no C compiler or binaries needed, so it will run on Windows, macOS and a Raspberry Pi.
+
+### Where the game comes from
+
+The planned engine is a Python port of *Dungeon*, the mainframe version of Zork (the 1977 MIT game by Tim Anderson, Marc Blank, Bruce Daniels and Dave Lebling, which became Infocom's *Zork* trilogy). The port will be derived from the 1977 MIT source in the Tapes of Tech Square collection (MIT Libraries, Department of Distinctive Collections, MIT No Attribution licence) and from the C port of the Fortran version (*Dungeon* 2.6), which is distributed as public domain. Full credit and sources will be listed here when the port is added. Zork is a trademark of its owner; this project is not affiliated with or endorsed by them.
+
+Run the tests with `python -m unittest test_zork -v`.
 
 ## Status
 
