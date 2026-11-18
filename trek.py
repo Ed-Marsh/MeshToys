@@ -20,7 +20,6 @@ import math
 import os
 import random
 import tempfile
-import time
 
 log = logging.getLogger("trek")
 
@@ -43,17 +42,18 @@ DEVICES = ["", "Warp Engines", "Short Range Sensors", "Long Range Sensors",
            "Library-Computer"]
 SHORT = ["", "Warp", "SRS", "LRS", "Phas", "Torp", "Dmg", "Shld", "Comp"]
 
-# One-line descriptions shown by "/help name" (the bridge registers these).
+# One-line descriptions: "/help trek", and "help nav" etc. inside a Trek session.
 INFO = {
-    "trek": "Super Star Trek. /trek starts or resumes your game, /trek new restarts, /trek help explains",
+    "trek": "Super Star Trek. /trek starts or resumes your game and keeps you in it until /quit. "
+            "Inside, type commands like srs or nav 3 1.5. /trek new restarts, /trek help explains",
     "srs": "Short range scan of your quadrant. E=you K=Klingon B=starbase S=star +=empty. Row,column",
     "lrs": "Long range scan of the 3x3 quadrants around you. Digits: Klingons, bases, stars",
-    "nav": "Navigate: /nav course warp, e.g. /nav 3 1.5. Course 1-8.9 (1=right, 3=up), warp 0-8",
-    "pha": "Fire phasers: /pha units, e.g. /pha 200. Closer Klingons take more damage",
-    "tor": "Fire a photon torpedo: /tor course, e.g. /tor 3",
-    "shi": "Set shields: /shi units, taken from ship energy, e.g. /shi 500",
-    "dam": "Damage report. When docked, /dam y pays for repairs with time",
-    "cmp": "Computer: /cmp g galaxy, s status, t torpedo data, b base data, d r c r c course calc",
+    "nav": "Navigate: nav course warp, e.g. nav 3 1.5. Course 1-8.9 (1=right, 3=up), warp 0-8",
+    "pha": "Fire phasers: pha units, e.g. pha 200. Closer Klingons take more damage",
+    "tor": "Fire a photon torpedo: tor course, e.g. tor 3",
+    "shi": "Set shields: shi units, taken from ship energy, e.g. shi 500",
+    "dam": "Damage report. When docked, dam y pays for repairs with time",
+    "cmp": "Computer: cmp g galaxy, s status, t torpedo data, b base data, d r c r c course calc",
 }
 
 
@@ -276,7 +276,7 @@ class Game:
                 self.docked = True
                 self.energy, self.torps, self.shields = E0, P0, 0
                 if not was_docked and any(self.dmg[i] < 0 for i in range(1, 9)):
-                    self.say("Docked. Damaged: /dam to repair")
+                    self.say("Docked. Damaged: dam to repair")
 
     def _srs_text(self):
         rows = [" 12345678"]
@@ -475,11 +475,11 @@ class Game:
 
     def do_nav(self, args):
         if len(args) < 2:
-            self.say("Usage: /nav course warp, e.g. /nav 3 1.5")
+            self.say("Usage: nav course warp, e.g. nav 3 1.5")
             return self.take()
         course, warp = num(args[0]), num(args[1])
         if course is None or warp is None:
-            self.say("Usage: /nav course warp, e.g. /nav 3 1.5")
+            self.say("Usage: nav course warp, e.g. nav 3 1.5")
             return self.take()
         if course == 9:
             course = 1.0
@@ -545,7 +545,7 @@ class Game:
             return self.take()
         x = num(args[0]) if args else None
         if x is None:
-            self.say("Phasers locked on target. Energy %d. /pha units" % self.energy)
+            self.say("Phasers locked on target. Energy %d. pha units" % self.energy)
             return self.take()
         x = int(x)
         if x <= 0:
@@ -582,7 +582,7 @@ class Game:
             return self.take()
         course = num(args[0]) if args else None
         if course is None:
-            self.say("Usage: /tor course, e.g. /tor 3")
+            self.say("Usage: tor course, e.g. tor 3")
             return self.take()
         if course == 9:
             course = 1.0
@@ -630,7 +630,7 @@ class Game:
             return self.take()
         x = num(args[0]) if args else None
         if x is None:
-            self.say("Energy available %d. Shields %d. /shi units"
+            self.say("Energy available %d. Shields %d. shi units"
                      % (self.energy + self.shields, self.shields))
             return self.take()
         x = int(x)
@@ -664,7 +664,7 @@ class Game:
             else:
                 cost = 0.1 * broken + self.rng.random() / 50
                 self.repair_cost = min(cost, 0.9)
-                self.say("Repairs need %.1f stardates. /dam y to authorize."
+                self.say("Repairs need %.1f stardates. dam y to authorize."
                          % (self.repair_cost + 0.1))
         return self.take()
 
@@ -701,11 +701,11 @@ class Game:
         elif sub == "d":
             v = [num(a) for a in args[1:5]]
             if len(v) < 4 or None in v:
-                self.say("Usage: /cmp d row col row col (from, to)")
+                self.say("Usage: cmp d row col row col (from, to)")
             else:
                 self.say(self._vector_text("Target", v[2], v[3], v[0], v[1]))
         else:
-            self.say("/cmp g galaxy, s status, t torpedo data, b base data, "
+            self.say("cmp g galaxy, s status, t torpedo data, b base data, "
                      "d row col row col = course calc")
         return self.take()
 
@@ -734,8 +734,8 @@ class Game:
 
 HELP = [
     "Super Star Trek: destroy every Klingon before time runs out.\n"
-    "/srs /lrs /nav course warp /pha units /tor course /shi units /dam /cmp\n"
-    "/help name explains each. Row,column.",
+    "Commands: srs lrs nav course warp pha units tor course shi units dam cmp",
+    "help name explains each (e.g. help nav). /quit leaves; your game is saved. Row,column.",
     "Courses: 1 right, 2 up-right, 3 up, 4 up-left, 5 left, 6 down-left, 7 down, 8 down-right.\n"
     "Map: E=you K=Klingon B=base S=star +=empty. Dock by sailing next to B. 1 warp = 8 sectors.",
 ]
@@ -748,7 +748,6 @@ class TrekGames:
         self.path = path
         self.rng = rng
         self.games = {}
-        self.touched = {}      # node key -> time of its last command (not saved)
         self._load()
 
     def _load(self):
@@ -777,20 +776,10 @@ class TrekGames:
         except OSError as e:
             log.warning("Could not save games: %s", e)
 
-    def active(self, sender, window, now=None):
-        """True if the node has an unfinished game and sent a trek command within
-        the last `window` seconds. /trek has no explicit quit, so this is what
-        "in Trek" means (used to keep a node out of /zork at the same time)."""
-        key = sender.lower()
-        g, t = self.games.get(key), self.touched.get(key)
-        now = time.time() if now is None else now
-        return bool(g and not g.over and t is not None and now - t < window)
-
     def command(self, sender, verb, argstr):
         """Run a game command for a node; returns a list of messages."""
         args = (argstr or "").split()
         key = sender.lower()
-        self.touched[key] = time.time()
         g = self.games.get(key)
         if verb == "trek":
             sub = args[0].lower() if args else ""

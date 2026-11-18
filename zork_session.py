@@ -146,6 +146,8 @@ def chunk_reply(text, max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT):
 class ZorkSessions:
     """Live games (in memory) plus saved games (one JSON file per node)."""
 
+    name = "zork"                       # the command that starts it
+
     def __init__(self, save_dir, engine=None, idle_s=DEFAULT_IDLE_S,
                  max_chunks=DEFAULT_MAX_CHUNKS, limit=trek.MSG_LIMIT,
                  clock=time.time, blocked=None):
@@ -179,6 +181,8 @@ class ZorkSessions:
     def in_zork(self, node):
         with self.lock:
             return node.lower() in self.live
+
+    in_session = in_zork
 
     def has_notice(self, node):
         with self.lock:

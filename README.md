@@ -3,7 +3,7 @@
 Small tools that turn a [Meshtastic](https://meshtastic.org) node into a remote-control and information gateway for a PC.
 
 - [`mesh_bridge.py`](#mesh_bridgepy): the bridge. Runs commands sent over the mesh and replies by direct message.
-- [`trek.py`](#super-star-trek-trekpy): Super Star Trek, a game you play over the mesh through the bridge. Tests are in `test_trek.py`.
+- [`trek.py`](#super-star-trek-trekpy): Super Star Trek, a game you play over the mesh through the bridge (sessions are in `trek_session.py`). Tests are in `test_trek.py` and `test_trek_session.py`.
 - [`zork_session.py`](#zork-zork_sessionpy-and-zork): `/zork`, the classic text adventure (Dungeon, the mainframe Zork) played over the mesh. Tests are in `test_zork.py` and `test_dungeon.py`. See [`NOTICE`](NOTICE) for its origin and licence.
 
 ## mesh_bridge.py
@@ -31,7 +31,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `/calc expression` | Calculator. Supports `+ - * / // % ** ^` (`^` is power), brackets and `!` for factorial (0 to 170). Examples: `/calc 23 * 5 / (10 * 2)` gives `5.75`, `/calc 4!` gives `24`. Very large results are shown in scientific notation, and oversized powers are refused |
 | `/ping` | `pong` and the PC's time |
 | `/help` | List of available commands, one per line (admin commands only for admin nodes). `/help name` describes one command, e.g. `/help calc` |
-| `/trek`, `/srs`, `/lrs`, `/nav`, `/pha`, `/tor`, `/shi`, `/dam`, `/cmp` | The Super Star Trek game. See [Super Star Trek](#super-star-trek-trekpy) below. These are listed in `/help` like any other command |
+| `/trek` | The Super Star Trek game. `/trek` starts or resumes your game and keeps you in it until `/quit`; inside, you type the game's commands without a `/` (`srs`, `nav 3 1.5`). See [Super Star Trek](#super-star-trek-trekpy) below |
 | `/zork` | A text adventure. While you are in it, every message you send is a game command. See [Zork](#zork-zork_sessionpy-and-zork) below |
 
 ### Install
@@ -68,7 +68,7 @@ Options:
 - `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
 - `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek and Zork). Default 3.
-- `--zork-idle-min MIN`: close and save a Zork session after this many idle minutes. Default 30. A Trek game also blocks `/zork` for this long after its last command.
+- `--session-idle-min MIN` (also `--session-idle-min`): close a Zork or Trek session after this many idle minutes. The game is saved. Default 30.
 - `--zork-max-chunks N`: most messages sent for one Zork reply. Default 6.
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
 - `--log-file PATH`: also append the log to a file.
@@ -116,22 +116,24 @@ Anyone who can reach the node over the mesh can trigger commands unless `--allow
 
 A text version of the classic game, played by direct message to the bridge. Each node ID gets its own saved game (in `trek_games.json` next to the script), so people can play at the same time and carry on after a restart. It needs nothing beyond the bridge itself. Use `--dm-only` so games don't clutter the public channel.
 
-Your mission: destroy every Klingon before the stardate deadline, resupplying at starbases when you need to. Send `/trek` to start (or resume) and `/trek help` for a quick guide. `/trek new` abandons the current game and starts another.
+Your mission: destroy every Klingon before the stardate deadline, resupplying at starbases when you need to. Send `/trek` to start (or resume). That puts you *in Trek*: from then on **every** direct message you send is a game command, typed without a `/` (a leading `/` is ignored), until you send `/quit`. `/trek new` (or just `new` inside the game) abandons the current game and starts another, and `help` (or `/trek help`) gives a quick guide; `help nav` explains one command.
+
+Your game is saved after every command, so leaving with `/quit`, an idle timeout or a restart loses nothing and `/trek` picks it up again. After `--session-idle-min` minutes (default 30) without a message the session is closed quietly, and you are told the next time you message the bridge. A won or lost game also ends the session. You can only be in one game at a time: `/zork` while in Trek (or `/trek` while in Zork) says to `/quit` first. Messages sent to the public channel are never game input. The old `srs`, `nav` ... commands no longer exist outside a session.
 
 | Command | What it does |
 |---|---|
-| `/trek` | Start a game, or show where you are. `/trek new` restarts, `/trek help` explains |
-| `/srs` | Short range scan: your quadrant as an 8x8 map plus stardate, condition, position, energy, shields, torpedoes, Klingons and bases left |
-| `/lrs` | Long range scan of the 3x3 quadrants around you. Each three-digit code is Klingons, bases, stars |
-| `/nav course warp` | Move, e.g. `/nav 3 1.5`. Courses run 1 to 8.99 (1 = right, 3 = up, 5 = left, 7 = down; fractions aim between). One warp is 8 sectors, and warp 0.1 to 8 is allowed |
-| `/pha units` | Fire phasers, e.g. `/pha 300`. The energy is shared between the Klingons in the quadrant and falls off with distance |
-| `/tor course` | Fire a photon torpedo along a course. It destroys the first thing it hits (stars absorb it) |
-| `/shi units` | Set the shield level. The energy comes from, and returns to, the ship's energy |
-| `/dam` | Damage report. Docked at a starbase, `/dam` quotes the repair time and `/dam y` authorizes it (repairs cost stardates). The game reminds you when you dock with damage |
-| `/cmp g` | Galactic record: what you have scanned so far (two messages, rows 1-4 and 5-8) |
-| `/cmp s` | Status report: Klingons left, days left, starbases |
-| `/cmp t`, `/cmp b` | Course and distance to each Klingon, or to the starbase, in your quadrant |
-| `/cmp d r1 c1 r2 c2` | Course and distance from one sector to another |
+| `/trek` | Start a game or resume yours and enter Trek. `/trek new` restarts, `/trek help` explains (without entering) |
+| `srs` | Short range scan: your quadrant as an 8x8 map plus stardate, condition, position, energy, shields, torpedoes, Klingons and bases left |
+| `lrs` | Long range scan of the 3x3 quadrants around you. Each three-digit code is Klingons, bases, stars |
+| `nav course warp` | Move, e.g. `nav 3 1.5`. Courses run 1 to 8.99 (1 = right, 3 = up, 5 = left, 7 = down; fractions aim between). One warp is 8 sectors, and warp 0.1 to 8 is allowed |
+| `pha units` | Fire phasers, e.g. `pha 300`. The energy is shared between the Klingons in the quadrant and falls off with distance |
+| `tor course` | Fire a photon torpedo along a course. It destroys the first thing it hits (stars absorb it) |
+| `shi units` | Set the shield level. The energy comes from, and returns to, the ship's energy |
+| `dam` | Damage report. Docked at a starbase, `dam` quotes the repair time and `dam y` authorizes it (repairs cost stardates). The game reminds you when you dock with damage |
+| `cmp g` | Galactic record: what you have scanned so far (two messages, rows 1-4 and 5-8) |
+| `cmp s` | Status report: Klingons left, days left, starbases |
+| `cmp t`, `cmp b` | Course and distance to each Klingon, or to the starbase, in your quadrant |
+| `cmp d r1 c1 r2 c2` | Course and distance from one sector to another |
 
 On the map, `E` is you, `K` a Klingon, `B` a starbase, `S` a star and `+` an empty sector (change `DISPLAY` in `trek.py` to use others). The Meshtastic app renders Markdown, so the game never sends `_`, `*`, backticks, `~` or backslashes, which it would use as formatting and swallow. Coordinates are always row,column. Dock by sailing into any sector next to a starbase (diagonals count): energy and torpedoes are refilled, shields drop and Klingons can't hurt you. Ships get damaged by Klingon hits and by chance, and damaged devices stop working until they are repaired by time or at a starbase. Moving across a quadrant boundary costs a stardate.
 
@@ -141,7 +143,7 @@ The map symbols were chosen by testing in the Meshtastic Android app, which uses
 
 This is a rewrite of a B4J port of the 1978 BASIC game rather than a straight translation. 
 
-Run the tests with `python -m unittest test_trek -v`.
+Run the tests with `python -m unittest test_trek test_trek_session -v`.
 
 ## Zork (zork_session.py and zork/)
 
@@ -156,8 +158,8 @@ Details:
 
 - **Per node:** each node ID has its own game and its own save file (`zork_saves/<node>.json`), so several people can play at once. The game is saved after every command, so a restart or crash loses nothing. `/zork` after a restart resumes it.
 - **Direct messages only:** public channel messages are never treated as game input, so a node in Zork can still chat on the channel.
-- **Idle timeout:** after `--zork-idle-min` minutes without a message the session is saved and closed quietly. The next time that node messages the bridge it is told, and `/zork` resumes.
-- **Trek and Zork:** a node can't be in both. `/trek` has no quit command, so a node counts as "in Trek" if it has an unfinished game and sent a Trek command within the idle timeout. `/zork` during that time says so, and `/trek` while in Zork says to `/quit` first.
+- **Idle timeout:** after `--session-idle-min` minutes without a message the session is saved and closed quietly. The next time that node messages the bridge it is told, and `/zork` resumes.
+- **Trek and Zork:** a node can only be in one of them. `/zork` while in Trek (or `/trek` while in Zork) replies with a short message saying to `/quit` first. Trek works the same way as Zork: `/trek` to start, free text inside, `/quit` to leave.
 - **Errors:** if the game engine fails, the node gets a short error and the session is closed (the last save is kept), so nobody is left stuck in Zork.
 - **Message size:** replies are cleaned (prompts, MORE markers, status lines and Markdown characters removed) and split at line, then sentence boundaries into messages of at most 190 bytes, numbered `(1/3)`. At most `--zork-max-chunks` are sent; a longer reply ends with `...(say 'again' / 'look' for more)`.
 

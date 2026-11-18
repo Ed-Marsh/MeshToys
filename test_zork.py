@@ -265,18 +265,6 @@ class SessionTests(unittest.TestCase):
         self.assertIn("state", data)
 
 
-class TrekActiveTests(unittest.TestCase):
-    def test_active_means_recent_unfinished_game(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            games = trek.TrekGames(os.path.join(tmp, "g.json"))
-            self.assertFalse(games.active("!aaaa", 1800))
-            games.command("!aaaa", "trek", "")
-            self.assertTrue(games.active("!aaaa", 1800))
-            self.assertFalse(games.active("!aaaa", 1800, now=time.time() + 1801))
-            games.games["!aaaa"].over = "won"
-            self.assertFalse(games.active("!aaaa", 1800))
-
-
 # --- The bridge hooks, with the radio libraries replaced by stubs ----------------
 def import_bridge():
     stubs = {}
@@ -302,7 +290,7 @@ class BridgeTests(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
         cfg = types.SimpleNamespace(
-            allow=None, admin=None, dm_only=False, reply_gap=0, zork_idle_min=30,
+            allow=None, admin=None, dm_only=False, reply_gap=0, session_idle_min=30,
             zork_max_chunks=6, zork_save_dir=os.path.join(self.tmp.name, "z"),
             lat=0, lon=0, near_km=2, announce=None, announce_channel=0)
         self.bridge = self.mb.Bridge(cfg)
@@ -360,13 +348,11 @@ class BridgeTests(unittest.TestCase):
         self.assertTrue(out[1].startswith("pong"))
         self.assertEqual(len(self.msg("!aaaa", "/ping")), 1)             # only once
 
-    def test_zork_vs_trek(self):
+    def test_zork_blocks_trek(self):
         self.msg("!aaaa", "/zork")
-        self.assertIn("/quit", " ".join(self.msg("!aaaa", "/trek")))
-        self.msg("!aaaa", "/quit")
-        self.msg("!bbbb", "/trek", expect=1)
-        self.assertIn("Trek", " ".join(self.msg("!bbbb", "/zork")))
-        self.assertFalse(self.bridge.zork.in_zork("!bbbb"))
+        self.assertIn("/quit", " ".join(self.msg("!aaaa", "/trek")))   # typed into Zork
+        self.assertIn("You're in Zork", " ".join(self.msg("!aaaa", "/trek", to="^all")))
+        self.assertFalse(self.bridge.trek.in_session("!aaaa"))
 
 
 if __name__ == "__main__":
