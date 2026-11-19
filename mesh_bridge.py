@@ -61,21 +61,25 @@ COMMAND_RE = re.compile(r"^\s*/([A-Za-z0-9_]+)(?:\s+(.*))?$", re.DOTALL)
 # ---------------------------------------------------------------------------
 COMMANDS = {}
 ADMIN_COMMANDS = set()   # names that only --admin nodes may run
+GAME_COMMANDS = set()    # games: listed by /games, left out of the plain /help list
 INFO = {}                # name -> one-line description shown by "/help name"
 
 
-def command(name, admin=False, info=""):
+def command(name, admin=False, info="", game=False):
     """Register a function as the handler for /name. It receives the
     runtime config (argparse namespace) and a context dict and returns a
     reply string, or None for no reply. Context keys: sender (node id),
     pos ((lat, lon) or None), args (rest of the message after the command
     name, "" if none), packet (the received packet dict),
-    iface (the meshtastic interface), my_id (this node's id)."""
+    iface (the meshtastic interface), my_id (this node's id).
+    game=True marks a game: it is listed by /games instead of /help."""
     def deco(fn):
         COMMANDS[name.lower()] = fn
         INFO[name.lower()] = info or (fn.__doc__ or "").strip()
         if admin:
             ADMIN_COMMANDS.add(name.lower())
+        if game:
+            GAME_COMMANDS.add(name.lower())
         return fn
     return deco
 
@@ -383,8 +387,15 @@ def cmd_help(cfg, ctx):
         if want not in COMMANDS or (want in ADMIN_COMMANDS and not is_admin):
             return f"Unknown /{want}. Try /help"
         return f"/{want}\n{INFO.get(want) or 'no description'}"
-    names = [c for c in sorted(COMMANDS) if is_admin or c not in ADMIN_COMMANDS]
+    names = [c for c in sorted(COMMANDS)
+             if c not in GAME_COMMANDS and (is_admin or c not in ADMIN_COMMANDS)]
     lines = ["Commands:"] + [f"/{c}" for c in names] + ["/help name for details"]
+    return trek.pack(lines)
+
+
+@command("games", info="List the games you can play over the mesh")
+def cmd_games(cfg, ctx):
+    lines = ["Games:"] + [f"/{c}" for c in sorted(GAME_COMMANDS)] + ["/help name for details"]
     return trek.pack(lines)
 
 
@@ -393,25 +404,25 @@ TREK = trek.TrekGames(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                    "trek_games.json"))
 
 
-@command("trek", info=trek_session.INFO)
+@command("trek", info=trek_session.INFO, game=True)
 def cmd_trek(cfg, ctx):
     return ctx["bridge"].trek.handle(ctx["sender"], "/trek " + ctx["args"])
 
 
 # --- Zork (see zork_session.py) ---------------------------------------------
-@command("zork", info=zork_session.INFO["zork"])
+@command("zork", info=zork_session.INFO["zork"], game=True)
 def cmd_zork(cfg, ctx):
     return ctx["bridge"].zork.handle(ctx["sender"], ("/zork " + ctx["args"]).strip())
 
 
 # --- Colossal Cave (see adventure_session.py) -------------------------------
-@command("adventure", info=adventure_session.INFO["adventure"])
+@command("adventure", info=adventure_session.INFO["adventure"], game=True)
 def cmd_adventure(cfg, ctx):
     return ctx["bridge"].adventure.handle(ctx["sender"], ("/adventure " + ctx["args"]).strip())
 
 
 # --- Hunt the Wumpus (see wumpus_session.py) --------------------------------
-@command("wumpus", info=wumpus_session.INFO["wumpus"])
+@command("wumpus", info=wumpus_session.INFO["wumpus"], game=True)
 def cmd_wumpus(cfg, ctx):
     return ctx["bridge"].wumpus.handle(ctx["sender"], ("/wumpus " + ctx["args"]).strip())
 
