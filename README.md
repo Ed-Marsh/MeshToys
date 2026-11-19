@@ -17,7 +17,7 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 
 - The command must be the very first thing in the message: `/calc 10/2` works, but `what is 10 /x` and `@calc 10` are ignored. This keeps a `/` used for division inside text from triggering anything.
 - Command names are not case sensitive. Everything after the name is passed to the command as its arguments.
-- Send `/help` to list the commands and `/help name` (for example `/help calc`) for a one-line description of one. The list has one command per line.
+- Send `/help` to list the commands and `/help name` (for example `/help calc`) for a one-line description of one. The list has one command per line. The games are not in that list: send `/games` to see them.
 - Admin commands (`/announce`, `/say`) are hidden from `/help` unless the sender is in `--admin`, and `/help say` from anyone else answers `Unknown /say`.
 
 ### Built-in commands
@@ -33,7 +33,15 @@ A Heltec node (tested target: Heltec V4) is connected to a PC over USB or WiFi. 
 | `/say text` | **Admin only.** Broadcasts `text` on the public channel. Example: `/say Net tonight 8pm` |
 | `/calc expression` | Calculator. Supports `+ - * / // % ** ^` (`^` is power), brackets and `!` for factorial (0 to 170). Examples: `/calc 23 * 5 / (10 * 2)` gives `5.75`, `/calc 4!` gives `24`. Very large results are shown in scientific notation, and oversized powers are refused |
 | `/ping` | `pong` and the PC's time |
-| `/help` | List of available commands, one per line (admin commands only for admin nodes). `/help name` describes one command, e.g. `/help calc` |
+| `/help` | List of available commands, one per line (admin commands only for admin nodes). The games are not listed; use `/games` for those. `/help name` describes one command, e.g. `/help calc` |
+| `/games` | List of the games you can play over the mesh. `/help name` describes one, e.g. `/help zork` |
+
+### Games
+
+Send `/games` to list them. Each game starts with its own command, and while you are in a game, every message you send is a game command until `/quit`.
+
+| Command | Game |
+|---|---|
 | `/trek` | The Super Star Trek game. `/trek` starts or resumes your game and keeps you in it until `/quit`; inside, you type the game's commands without a `/` (`srs`, `nav 3 1.5`). See [Super Star Trek](#super-star-trek-trekpy) below |
 | `/zork` | A text adventure. While you are in it, every message you send is a game command. See [Zork](#zork-zork_sessionpy-and-zork) below |
 | `/adventure` | Colossal Cave Adventure, the original cave game. Works like `/zork`: every message you send is a game command until `/quit`. See [Colossal Cave](#colossal-cave-adventure-adventure_sessionpy-and-adventure) below |
@@ -173,7 +181,7 @@ If `git pull` complains about local changes, check `git status` first. If a new 
 
 ### Adding commands
 
-Write a function that takes the config and a context dict (`ctx["sender"]` is the caller's node ID, `ctx["pos"]` is their `(lat, lon)` or `None`, and `ctx["packet"]`, `ctx["iface"]` and `ctx["my_id"]` give the raw packet, the Meshtastic interface and this node's ID) and returns a reply string, and register it. The optional `info` text is what `/help name` shows (if omitted, the function's docstring is used), and `admin=True` restricts the command to `--admin` nodes:
+Write a function that takes the config and a context dict (`ctx["sender"]` is the caller's node ID, `ctx["pos"]` is their `(lat, lon)` or `None`, and `ctx["packet"]`, `ctx["iface"]` and `ctx["my_id"]` give the raw packet, the Meshtastic interface and this node's ID) and returns a reply string, and register it. The optional `info` text is what `/help name` shows (if omitted, the function's docstring is used), `admin=True` restricts the command to `--admin` nodes, and `game=True` lists it under `/games` instead of `/help`:
 
 ```python
 @command("uptime", info="How long the PC has been up")
@@ -323,7 +331,7 @@ The licence position is not as clean as it could be, so read [`NOTICE`](NOTICE):
 
 Recorded games from the C program (a walk through the opening, a dwarf attack, death and reincarnation, the pirate, the cave closing and closed, the lamp dimming, the final score) are kept in `test_data/adventure_golden.json` and replayed by the tests, so the check runs without the C source. The unit tests also cover the engine on its own, saving and resuming (including the random state), the session layer with two nodes at once, idle timeouts, engine failures, the exclusion of Trek and Zork, and public messages never reaching the game.
 
-Not checked: a real radio and node, and a Raspberry Pi Zero W. Everything above ran on Windows with Python 3.14.
+Everything above ran on Windows with Python 3.14. Since then the bridge has also been run with a real radio and node (a Heltec V4) on a Raspberry Pi Zero W; see [Running on a Raspberry Pi Zero W](#running-on-a-raspberry-pi-zero-w) for what was checked there.
 
 To regenerate the data from the C source: `python tools/gen_adventure_data.py path/to/colossal/src`. To repeat the comparison: `python tools/crosscheck_adventure.py path/to/colossal/src --games 2000`.
 
