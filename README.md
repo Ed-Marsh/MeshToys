@@ -78,6 +78,10 @@ Once you are in a game, everything you send is game input until you send `/quit`
 
 Anyone who can reach your node over the mesh can trigger commands unless you restrict it. Use `--dm-only`, and `--allow` before adding any command that changes something. See [Security](docs/bridge-reference.md#security).
 
+## Contributing
+
+Pull requests are welcome, whether it's a new command, a new game, a fix or a docs correction. Please run the tests first (see Status below). There is no code of conduct, just don't be a weapon.
+
 ## Licence
 
 MeshToys' own code is released under the [MIT licence](LICENSE), with one important exception: **the Zork (Dungeon) game files are non-commercial, hobby use only**, and the Colossal Cave and Wumpus games are ports or rewrites of other people's work with their own notes. Read [`NOTICE`](NOTICE) before you use or share any of the games.
