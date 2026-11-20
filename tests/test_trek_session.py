@@ -1,5 +1,5 @@
 """Tests for trek_session.py and the /trek session hooks in mesh_bridge.py
-(run: python -m unittest test_trek_session -v)."""
+(run: python -m unittest tests.test_trek_session -v)."""
 
 import os
 import random
@@ -11,7 +11,7 @@ import unittest
 from unittest import mock
 
 import trek
-from test_zork import import_bridge
+from tests.test_zork import import_bridge
 from trek_session import TrekSessions
 
 

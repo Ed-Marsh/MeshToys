@@ -1,5 +1,5 @@
 """Tests for zork_session.py and the /zork hooks in mesh_bridge.py
-(run: python -m unittest test_zork -v)."""
+(run: python -m unittest tests.test_zork -v)."""
 
 import json
 import os

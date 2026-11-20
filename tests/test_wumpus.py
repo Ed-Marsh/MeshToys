@@ -1,5 +1,5 @@
 """Tests for the Wumpus engine (wumpus/), wumpus_session.py and the /wumpus hooks in
-mesh_bridge.py (run: python -m unittest test_wumpus -v).
+mesh_bridge.py (run: python -m unittest tests.test_wumpus -v).
 
 Games are made deterministic two ways: a fixed starting layout, and a FakeRng that
 hands out the random numbers the test wants (every random choice in the engine is
@@ -16,7 +16,7 @@ import unittest
 from unittest import mock
 
 import trek
-from test_zork import Clock, blen, import_bridge
+from tests.test_zork import Clock, blen, import_bridge
 from wumpus import engine as E
 from wumpus.engine import ACTION, MOVE, SHOOT, TUNNELS, WumpusEngine
 from wumpus_session import WumpusSessions

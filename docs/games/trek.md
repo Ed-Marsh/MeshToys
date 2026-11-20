@@ -29,4 +29,4 @@ The map symbols were chosen by testing in the Meshtastic Android app, which uses
 
 This is a rewrite of a B4J port of the 1978 BASIC game rather than a straight translation. 
 
-Run the tests with `python -m unittest test_trek test_trek_session -v`.
+Run the tests with `python -m unittest tests.test_trek tests.test_trek_session -v`.

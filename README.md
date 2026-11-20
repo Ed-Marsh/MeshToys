@@ -90,4 +90,4 @@ MeshToys is not affiliated with or endorsed by Meshtastic, Infocom, Activision, 
 
 ## Status
 
-Early version. Running on a Heltec V4 node; expect rough edges. Tests: `python -m unittest test_trek test_zork test_trek_session test_dungeon test_adventure test_wumpus`.
+Early version. Running on a Heltec V4 node; expect rough edges. Tests: `python -m unittest discover -s tests -t .`.

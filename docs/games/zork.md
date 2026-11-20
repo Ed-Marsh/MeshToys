@@ -31,8 +31,8 @@ The game logic in `zork/engine_gen.py` and the data file `zork/dtextc.dat` come 
 
 ## How it was checked
 
-`tools/crosscheck.py` builds the original C program (you need the C source and `python -m ziglang`, i.e. `pip install ziglang`), plays the same scripted games on it and on the Python port with the same random number sequence, and compares every character of output. Games start either at the beginning or from a random room carrying random objects, so the room and object code gets exercised. Thousands of games of hundreds of moves each have matched exactly. A sample of those recorded games is kept in `test_data/dungeon_golden.json` and replayed by the tests, so the check runs without the C source.
+`tools/crosscheck.py` builds the original C program (you need the C source and `python -m ziglang`, i.e. `pip install ziglang`), plays the same scripted games on it and on the Python port with the same random number sequence, and compares every character of output. Games start either at the beginning or from a random room carrying random objects, so the room and object code gets exercised. Thousands of games of hundreds of moves each have matched exactly. A sample of those recorded games is kept in `tests/test_data/dungeon_golden.json` and replayed by the tests, so the check runs without the C source.
 
 To regenerate the engine from the C source: `python tools/c2py.py path/to/c/source zork/engine_gen.py`.
 
-Run the tests with `python -m unittest test_zork test_dungeon -v`.
+Run the tests with `python -m unittest tests.test_zork tests.test_dungeon -v`.

@@ -1,7 +1,7 @@
 """Tests for the Colossal Cave engine (adventure/), adventure_session.py and the
-/adventure hooks in mesh_bridge.py (run: python -m unittest test_adventure -v).
+/adventure hooks in mesh_bridge.py (run: python -m unittest tests.test_adventure -v).
 
-The golden transcripts in test_data/adventure_golden.json were recorded from the
+The golden transcripts in tests/test_data/adventure_golden.json were recorded from the
 original C program by tools/crosscheck_adventure.py; replaying them checks that the
 Python engine still prints exactly what the C game printed.
 """
@@ -22,7 +22,7 @@ from adventure.engine import AdventureEngine, Bug, LCG
 from adventure.testkit import parse_scenario, scenario_text, setup_from_text
 from adventure_session import AdventureSessions, clean_output
 from game_session import chunk_reply
-from test_zork import Clock, blen, import_bridge
+from tests.test_zork import Clock, blen, import_bridge
 from zork.stub import StubEngine
 
 GOLDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data",
@@ -544,7 +544,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(data["node"], "!aaaa")
         self.assertEqual(data["state"]["v"], 1)
         here = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(here, ".gitignore"), encoding="utf-8") as fh:
+        with open(os.path.join(os.path.dirname(here), ".gitignore"), encoding="utf-8") as fh:
             self.assertIn("adventure_saves/", fh.read())
 
     def test_replies_have_no_prompts_or_markdown(self):

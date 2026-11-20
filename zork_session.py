@@ -9,7 +9,7 @@ every command, so a restart or crash loses nothing.
 The machinery is in game_session.py (shared with /adventure); this module only
 says what is particular to Zork: its name, intro text, the noise to strip from
 the Dungeon engine's output and which engine to load (see zork/__init__.py for
-the engine interface). It can be tested without the radio (see test_zork.py).
+the engine interface). It can be tested without the radio (see tests/test_zork.py).
 """
 
 import re

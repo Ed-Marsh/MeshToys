@@ -1,8 +1,8 @@
 """Tests for the Dungeon engine (zork/) and its use through zork_session.
 
-Run: python -m unittest test_dungeon -v
+Run: python -m unittest tests.test_dungeon -v
 
-test_data/dungeon_golden.json holds games recorded from the original C program
+tests/test_data/dungeon_golden.json holds games recorded from the original C program
 (tools/crosscheck.py --record); replaying them must give identical output.
 """
 

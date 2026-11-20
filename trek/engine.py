@@ -7,7 +7,7 @@ sector map uses one character per sector, and each node that talks to the
 bridge gets its own saved game.
 
 Nothing in here talks to the radio, so the game can be tested on its own
-(see test_trek.py).
+(see tests/test_trek.py).
 
 Coordinates are always row,column. In a quadrant "sector 3,5" is row 3,
 column 5. Course 1 is right, 3 is up, 5 is left and 7 is down; fractions such
