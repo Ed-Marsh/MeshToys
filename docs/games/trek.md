@@ -23,6 +23,10 @@ Your game is saved after every command, so leaving with `/quit`, an idle timeout
 
 On the map, `E` is you, `K` a Klingon, `B` a starbase, `S` a star and `+` an empty sector (change `DISPLAY` in `trek/engine.py` to use others). The Meshtastic app renders Markdown, so the game never sends `_`, `*`, backticks, `~` or backslashes, which it would use as formatting and swallow. Coordinates are always row,column. Dock by sailing into any sector next to a starbase (diagonals count): energy and torpedoes are refilled, shields drop and Klingons can't hurt you. Ships get damaged by Klingon hits and by chance, and damaged devices stop working until they are repaired by time or at a starbase. Moving across a quadrant boundary costs a stardate.
 
+<img src="../images/trek.jpg" alt="Super Star Trek: the 8x8 map, status line and a hint, as shown in the Meshtastic Android app" width="260">
+
+*The opening scan in the Meshtastic Android app: the quadrant map (`E` is the ship, `S` are stars), then stardate, condition, position, energy, shields, torpedoes, Klingons and starbases.*
+
 Every reply is split into messages of at most 190 bytes. Longer replies (for example a scan after a fight) arrive as several messages a few seconds apart. The grid uses one character per sector, so it can look slightly uneven in apps that use a proportional font.
 
 The map symbols were chosen by testing in the Meshtastic Android app, which uses a proportional font and renders Markdown. `.` and `-` are too narrow and make the rows drift, `_` is eaten as italics, and Markdown tables are not rendered (the `|` characters show as text). `+` and `S` have similar widths and line up. If you use a different client, change `DISPLAY` near the top of `trek/engine.py`.
