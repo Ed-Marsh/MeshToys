@@ -399,7 +399,7 @@ def cmd_games(cfg, ctx):
     return trek.pack(lines)
 
 
-# --- Super Star Trek (see trek.py) ------------------------------------------
+# --- Super Star Trek (see trek/engine.py) ------------------------------------------
 TREK = trek.TrekGames(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                    "trek_games.json"))
 

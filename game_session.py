@@ -30,7 +30,7 @@ MORE_NOTE = "...(say 'again' / 'look' for more)"
 # --- Cleaning the game's output ---------------------------------------------
 MORE_RE = re.compile(r"^\s*[\[(<*-]*\s*(more|press (any )?key.*|hit return.*)\s*[\])>*-]*\s*$",
                      re.I)
-# The Meshtastic app renders Markdown (see trek.py), so these must never be sent.
+# The Meshtastic app renders Markdown (see trek/engine.py), so these must never be sent.
 MD_TABLE = str.maketrans({"_": " ", "*": "", "`": "'", "~": "-", "\\": "/"})
 
 

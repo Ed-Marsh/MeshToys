@@ -1,4 +1,4 @@
-"""Tests for trek.py (run: python -m unittest test_trek -v)."""
+"""Tests for trek/engine.py (run: python -m unittest test_trek -v)."""
 
 import json
 import os
