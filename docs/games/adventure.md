@@ -1,4 +1,4 @@
-# Colossal Cave Adventure (adventure_session.py and adventure/)
+# Colossal Cave Adventure (adventure/)
 
 Send `/adventure` by direct message to start a game, or resume your saved one. This is the original cave game by Will Crowther and Don Woods (1976-77), where text adventures began. It works exactly like [Zork](zork.md): while you are in it, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped). Only these are special:
 

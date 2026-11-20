@@ -1,6 +1,6 @@
 """Game engines for the /zork command.
 
-An engine is a class with this interface (zork_session.py relies on nothing else):
+An engine is a class with this interface (zork/session.py relies on nothing else):
 
     Engine.new()            -> a fresh game
     Engine.from_dict(d)     -> a game restored from to_dict() (raise on bad data)

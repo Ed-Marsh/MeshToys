@@ -8,7 +8,7 @@ every command, so a restart or crash loses nothing.
 
 GameSessions is the shared machinery. A game is a small subclass that says what
 it is called, what its intro text is and which engine plays it (see
-zork_session.py and adventure_session.py). This module knows nothing about the
+zork/session.py and adventure/session.py). This module knows nothing about the
 radio or about which game engine is used (see zork/__init__.py for the engine
 interface), so it can be tested on its own (see tests/test_zork.py).
 """

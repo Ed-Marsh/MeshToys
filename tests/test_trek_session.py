@@ -1,4 +1,4 @@
-"""Tests for trek_session.py and the /trek session hooks in mesh_bridge.py
+"""Tests for trek/session.py and the /trek session hooks in mesh_bridge.py
 (run: python -m unittest tests.test_trek_session -v)."""
 
 import os
@@ -12,7 +12,7 @@ from unittest import mock
 
 import trek
 from tests.test_zork import import_bridge
-from trek_session import TrekSessions
+from trek.session import TrekSessions
 
 
 class Clock:

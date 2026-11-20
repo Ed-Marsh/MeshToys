@@ -4,7 +4,7 @@
 "/trek" starts (or resumes) a game and puts the node "in Trek". While it is in
 Trek every direct message it sends is a game command typed without a "/"
 ("srs", "nav 3 1.5"; a leading "/" is ignored), and "/quit" leaves. This works
-exactly like /zork (see zork_session.py) so the two feel the same, and a node can
+exactly like /zork (see zork/session.py) so the two feel the same, and a node can
 only be in one of them at a time.
 
 The game itself, and each node's saved game, are in trek/engine.py (TrekGames). The

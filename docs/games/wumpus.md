@@ -1,4 +1,4 @@
-# Hunt the Wumpus (wumpus_session.py and wumpus/)
+# Hunt the Wumpus (wumpus/)
 
 Send `/wumpus` by direct message to start a game, or resume your saved one. It works exactly like [Zork](zork.md): while you are in it, **every** direct message you send is a game command, including ones starting with `/`. Only these are special:
 

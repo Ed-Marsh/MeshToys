@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-node /adventure sessions for the MeshToys bridge (Colossal Cave).
 
-Works exactly like /zork (see game_session.py and zork_session.py): "/adventure"
+Works exactly like /zork (see game_session.py and zork/session.py): "/adventure"
 starts or resumes your game, every direct message is then a game command (even one
 starting with "/"), "/quit" saves and leaves, "/adventure" shows the room again and
 "/adventure new" starts over. The game itself is in adventure/engine.py.

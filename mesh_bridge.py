@@ -38,11 +38,11 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 from pubsub import pub
 
-import adventure_session
+from adventure import session as adventure_session
 import trek
-import trek_session
-import wumpus_session
-import zork_session
+from trek import session as trek_session
+from wumpus import session as wumpus_session
+from zork import session as zork_session
 
 log = logging.getLogger("mesh_bridge")
 
@@ -409,19 +409,19 @@ def cmd_trek(cfg, ctx):
     return ctx["bridge"].trek.handle(ctx["sender"], "/trek " + ctx["args"])
 
 
-# --- Zork (see zork_session.py) ---------------------------------------------
+# --- Zork (see zork/session.py) ---------------------------------------------
 @command("zork", info=zork_session.INFO["zork"], game=True)
 def cmd_zork(cfg, ctx):
     return ctx["bridge"].zork.handle(ctx["sender"], ("/zork " + ctx["args"]).strip())
 
 
-# --- Colossal Cave (see adventure_session.py) -------------------------------
+# --- Colossal Cave (see adventure/session.py) -------------------------------
 @command("adventure", info=adventure_session.INFO["adventure"], game=True)
 def cmd_adventure(cfg, ctx):
     return ctx["bridge"].adventure.handle(ctx["sender"], ("/adventure " + ctx["args"]).strip())
 
 
-# --- Hunt the Wumpus (see wumpus_session.py) --------------------------------
+# --- Hunt the Wumpus (see wumpus/session.py) --------------------------------
 @command("wumpus", info=wumpus_session.INFO["wumpus"], game=True)
 def cmd_wumpus(cfg, ctx):
     return ctx["bridge"].wumpus.handle(ctx["sender"], ("/wumpus " + ctx["args"]).strip())

@@ -14,7 +14,7 @@ import unittest
 from zork.dungeon import DungeonEngine
 from zork.rt import lcg_rand
 from zork.testkit import apply_scenario
-from zork_session import ZorkSessions
+from zork.session import ZorkSessions
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOLDEN = os.path.join(HERE, "test_data", "dungeon_golden.json")
@@ -151,7 +151,7 @@ class EngineTests(unittest.TestCase):
 
 
 class SessionTests(unittest.TestCase):
-    """The real game driven through zork_session, as the bridge does."""
+    """The real game driven through zork.session, as the bridge does."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

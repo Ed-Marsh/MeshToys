@@ -1,4 +1,4 @@
-"""Tests for the Colossal Cave engine (adventure/), adventure_session.py and the
+"""Tests for the Colossal Cave engine (adventure/), adventure/session.py and the
 /adventure hooks in mesh_bridge.py (run: python -m unittest tests.test_adventure -v).
 
 The golden transcripts in tests/test_data/adventure_golden.json were recorded from the
@@ -15,12 +15,12 @@ import types
 import unittest
 from unittest import mock
 
-import adventure_session
+from adventure import session as adventure_session
 import trek
 from adventure import data as D
 from adventure.engine import AdventureEngine, Bug, LCG
 from adventure.testkit import parse_scenario, scenario_text, setup_from_text
-from adventure_session import AdventureSessions, clean_output
+from adventure.session import AdventureSessions, clean_output
 from game_session import chunk_reply
 from tests.test_zork import Clock, blen, import_bridge
 from zork.stub import StubEngine

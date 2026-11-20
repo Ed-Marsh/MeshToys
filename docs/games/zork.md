@@ -1,4 +1,4 @@
-# Zork (zork_session.py and zork/)
+# Zork (zork/)
 
 Send `/zork` by direct message to start a game, or resume your saved one. While you are in Zork, **every** direct message you send goes to the game as a command, including ones starting with `/` (the leading `/` is dropped, so `/look` works). Only three things are special:
 

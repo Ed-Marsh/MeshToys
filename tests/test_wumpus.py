@@ -1,4 +1,4 @@
-"""Tests for the Wumpus engine (wumpus/), wumpus_session.py and the /wumpus hooks in
+"""Tests for the Wumpus engine (wumpus/), wumpus/session.py and the /wumpus hooks in
 mesh_bridge.py (run: python -m unittest tests.test_wumpus -v).
 
 Games are made deterministic two ways: a fixed starting layout, and a FakeRng that
@@ -19,7 +19,7 @@ import trek
 from tests.test_zork import Clock, blen, import_bridge
 from wumpus import engine as E
 from wumpus.engine import ACTION, MOVE, SHOOT, TUNNELS, WumpusEngine
-from wumpus_session import WumpusSessions
+from wumpus.session import WumpusSessions
 
 
 class FakeRng:

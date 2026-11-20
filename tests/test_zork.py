@@ -1,4 +1,4 @@
-"""Tests for zork_session.py and the /zork hooks in mesh_bridge.py
+"""Tests for zork/session.py and the /zork hooks in mesh_bridge.py
 (run: python -m unittest tests.test_zork -v)."""
 
 import json
@@ -12,9 +12,9 @@ import unittest
 from unittest import mock
 
 import trek
-import zork_session
+from zork import session as zork_session
 from zork.stub import StubEngine as Engine
-from zork_session import ZorkSessions, chunk_reply, clean_output
+from zork.session import ZorkSessions, chunk_reply, clean_output
 
 
 class Clock:

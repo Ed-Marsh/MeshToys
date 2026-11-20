@@ -1,6 +1,6 @@
 """Super Star Trek for the /trek command.
 
-The game itself is in engine.py; the per-node sessions are in ../trek_session.py.
+The game itself is in engine.py; the per-node sessions are in session.py.
 Everything the rest of MeshToys uses is re-exported here, so `import trek` and
 `trek.TrekGames` work as before.
 """
