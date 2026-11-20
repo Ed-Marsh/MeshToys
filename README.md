@@ -16,7 +16,7 @@ Send a direct message from your handheld node, and the bridge at home runs it an
 ## What you need
 
 - A Meshtastic node connected to the machine running the bridge: tested target is a Heltec V4, connected over USB or WiFi.
-- Python 3.10 or newer: the tests pass on 3.10 (Linux) and 3.14 (Windows), and the bridge runs on a Raspberry Pi Zero W. Older versions have not been tried.
+- Python 3.10 or newer: the tests pass on 3.10 (Linux) and 3.14 (Windows), and the bridge runs on 3.13 on a Raspberry Pi Zero W. Older versions have not been tried.
 - Internet access on the bridge machine for `/temperature`, `/weather` and `/forecast` only (they use [Open-Meteo](https://open-meteo.com), no API key). Everything else works offline.
 
 ## Quick start
