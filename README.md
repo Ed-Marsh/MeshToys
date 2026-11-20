@@ -4,18 +4,14 @@
 
 Send a direct message from your handheld node, and the bridge at home runs it and replies over the mesh, with no phone signal or internet needed on your side. Ask for the weather, do a sum, check how well your signal is being heard, or play Zork, Colossal Cave, Hunt the Wumpus or Super Star Trek in 190-byte messages.
 
-```
-You:     /calc 23 * 5 / (10 * 2)
-MeshToys: 5.75
+<p align="center">
+  <img src="docs/images/help.jpg" alt="/help listing the bridge's commands" width="200">
+  <img src="docs/images/games.jpg" alt="/games listing the four games" width="200">
+  <img src="docs/images/forecast.jpg" alt="/forecast reply" width="200">
+  <img src="docs/images/trek.jpg" alt="Super Star Trek map in the Meshtastic app" width="200">
+</p>
 
-You:     /temperature
-MeshToys: Home 12.3C (feels 10.1C) | You 8.8C (feels 6.8C)
-
-You:     /wumpus
-MeshToys: Cave 5. Tunnels: 1 4 6. You feel a draft. Arrows 5.
-```
-
-(Example replies, taken from the documentation of each command. Real output depends on your location and game.)
+*Screenshots from the Meshtastic Android app, talking to a Heltec V4 bridge node (MTOY) over LoRa.*
 
 ## What you need
 
