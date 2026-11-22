@@ -6,3 +6,6 @@ zork_saves/
 adventure_saves/
 wumpus_saves/
 CLAUDE.md
+stats.json
+stats.json.bad
+stats.json.tmp

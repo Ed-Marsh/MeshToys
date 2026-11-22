@@ -30,6 +30,8 @@ import math
 import os
 import queue
 import re
+import signal
+import sys
 import threading
 import time
 
@@ -39,6 +41,7 @@ import meshtastic.tcp_interface
 from pubsub import pub
 
 from adventure import session as adventure_session
+import stats as stats_mod
 import trek
 from trek import session as trek_session
 from wumpus import session as wumpus_session
@@ -219,6 +222,11 @@ def cmd_say(cfg, ctx):
     if not ctx["args"]:
         return "Usage: /say your text"
     return ctx["bridge"].send_public(ctx["args"])
+
+
+@command("stats", admin=True, info="Admin only. Lifetime usage: visitors, commands, games, busiest nodes")
+def cmd_stats(cfg, ctx):
+    return trek.pack(ctx["bridge"].stats.report(GAME_COMMANDS))
 
 
 # --- /calc: a small safe calculator (no eval) ------------------------------
@@ -431,6 +439,7 @@ def _session_input(cfg, ctx):
     """A node in a game (Zork, Adventure or Trek): its message is a game command."""
     for mode in ctx["bridge"].modes:
         if mode.in_session(ctx["sender"]):
+            ctx["bridge"].stats.game_message(mode.name)
             return mode.handle(ctx["sender"], ctx["args"])
     return None
 
@@ -463,6 +472,9 @@ class Bridge:
         self.admins = {a.lower() for a in (cfg.admin or [])}
         self.last_public = 0.0
         here = os.path.dirname(os.path.abspath(__file__))
+        self.stats = stats_mod.Stats(
+            getattr(cfg, "stats_file", None) or os.path.join(here, "stats.json"),
+            flush_s=getattr(cfg, "stats_interval_min", 15) * 60)
         idle_s = getattr(cfg, "session_idle_min", 30) * 60
         # A node can be in one game at a time; each says how to leave the others.
         def blocker(me):
@@ -584,13 +596,19 @@ class Bridge:
             sender, name, args, packet = self.jobs.get()
             handler = INTERNAL.get(name) or COMMANDS.get(name)
             is_admin = sender.lower() in self.admins
+            if name != SESSION_NOTICE:
+                self.stats.seen(sender, self.node_name(sender))
             if handler is not None and name in ADMIN_COMMANDS and not is_admin:
                 # Don't reveal or answer admin commands to anyone else.
                 log.warning("Refused admin command /%s from %s", name, sender)
+                self.stats.bump("refused")
                 continue
             if handler is None:
+                self.stats.bump("unknown")
                 reply = f"Unknown /{name}. Try /help"
             else:
+                if name not in INTERNAL:
+                    self.stats.command(name)
                 try:
                     ctx = {"sender": sender, "pos": self.sender_position(sender),
                            "packet": packet, "iface": self.iface,
@@ -599,6 +617,7 @@ class Bridge:
                     reply = handler(self.cfg, ctx)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Handler %s failed", name)
+                    self.stats.bump("errors")
                     reply = f"/{name} failed: {type(e).__name__}"
             if reply:
                 parts = reply if isinstance(reply, (list, tuple)) else [reply]
@@ -638,11 +657,13 @@ class Bridge:
                     last_reap = time.time()
                     for mode in self.modes:
                         mode.reap()
+                    self.stats.maybe_flush()
                 if self.lost.is_set():
                     self.reconnect()
         except KeyboardInterrupt:
             pass
         finally:
+            self.stats.flush()
             try:
                 self.iface.close()
             except Exception:  # noqa: BLE001
@@ -708,6 +729,12 @@ def main():
     ap.add_argument("--wumpus-save-dir", default=None, metavar="DIR",
                     help="where Wumpus saves live, one file per node "
                          "(default wumpus_saves/ next to the script)")
+    ap.add_argument("--stats-file", default=None, metavar="FILE",
+                    help="where lifetime usage stats for /stats are kept "
+                         "(default stats.json next to the script)")
+    ap.add_argument("--stats-interval-min", type=float, default=15, metavar="MIN",
+                    help="write the stats file at most this often, and only if something "
+                         "changed (also written on shutdown). Default 15")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -718,6 +745,8 @@ def main():
     logging.basicConfig(level=logging.DEBUG if cfg.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s",
                         handlers=handlers)
+    # systemd stops a service with SIGTERM: exit normally so the stats are written.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     Bridge(cfg).run()
 
 

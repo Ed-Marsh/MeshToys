@@ -7,7 +7,7 @@ Reference for `mesh_bridge.py`: how commands are sent, every option, node setup,
 - The command must be the very first thing in the message: `/calc 10/2` works, but `what is 10 /x` and `@calc 10` are ignored. This keeps a `/` used for division inside text from triggering anything.
 - Command names are not case sensitive. Everything after the name is passed to the command as its arguments.
 - Send `/help` to list the commands and `/help name` (for example `/help calc`) for a one-line description of one. The list has one command per line. The games are not in that list: send `/games` to see them.
-- Admin commands (`/announce`, `/say`) are hidden from `/help` unless the sender is in `--admin`, and `/help say` from anyone else answers `Unknown /say`.
+- Admin commands (`/announce`, `/say`, `/stats`) are hidden from `/help` unless the sender is in `--admin`, and `/help say` from anyone else answers `Unknown /say`.
 
 ## Running the bridge
 
@@ -33,10 +33,12 @@ Options:
 - `--allow '!a1b2c3d4' ...`: only obey messages from these node IDs. Default is anyone on the mesh.
 - `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
 - `--near-km`: a caller whose known position is within this many km of the base is treated as being at home and gets `You: near home` instead of a second lookup. Default 2.
-- `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
+- `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`, `/stats`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
 - `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
 - `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek, Zork and Adventure). Default 3.
+- `--stats-file FILE`: where the lifetime usage counters behind `/stats` are kept. Default `stats.json` next to the script. Delete it to reset the totals.
+- `--stats-interval-min MIN`: write the stats file at most this often, and only if something has changed since the last write. It is also written when the bridge shuts down cleanly (Ctrl+C or `systemctl stop`), but a power cut can lose up to this long's worth of counts. Default 15.
 - `--session-idle-min MIN` (also `--zork-idle-min`): close a Zork, Adventure or Trek session after this many idle minutes. The game is saved. Default 30.
 - `--game-max-chunks N` (also `--zork-max-chunks`): most messages sent for one Zork or Adventure reply. Default 6 for Zork and 10 for Adventure (its `help` text and its longest room description need 9 or 10).
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
