@@ -9,3 +9,4 @@ CLAUDE.md
 stats.json
 stats.json.bad
 stats.json.tmp
+.env

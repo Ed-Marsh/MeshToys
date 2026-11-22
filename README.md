@@ -45,6 +45,8 @@ To run it unattended, on a Raspberry Pi Zero W with the node plugged in by USB a
 | `/nodes` | How many nodes your Heltec has heard in the last hour, how many it knows in total, and the best SNR with that node's short name |
 | `/announce` | **Admin only.** Broadcasts the `--announce` preset on the public channel and replies `Sent publicly` |
 | `/say text` | **Admin only.** Broadcasts `text` on the public channel. Example: `/say Net tonight 8pm` |
+| `/status` | Bridge uptime and host uptime, plus a ping test to the router and to the internet (`Router: ok 1ms`, `Internet: ok 23ms`, or `DOWN`). The addresses are set with `--status-router` and `--status-host` |
+| `/reboot yes` | **Admin only.** Reboots the host (Linux only) after a short delay, replying `Rebooting at HH:MM:SS`. Plain `/reboot` does nothing but remind you to add `yes`, and `/reboot cancel` stops a pending one. See [Reboot setup](docs/bridge-reference.md#reboot-setup) |
 | `/stats` | **Admin only.** Lifetime usage: unique visitors (total, 24h, 7d), commands and games used and how often, errors, and the busiest nodes. Kept in `stats.json` |
 | `/calc expression` | Calculator. Supports `+ - * / // % ** ^` (`^` is power), brackets and `!` for factorial (0 to 170). Examples: `/calc 23 * 5 / (10 * 2)` gives `5.75`, `/calc 4!` gives `24`. Very large results are shown in scientific notation, and oversized powers are refused |
 | `/ping` | `pong` and the PC's time |
