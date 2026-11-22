@@ -11,7 +11,8 @@ import time
 
 log = logging.getLogger("mesh_bridge.hostops")
 
-DEFAULT_REBOOT_DELAY_S = 15
+DEFAULT_REBOOT_DELAY_S = 60
+NOW_DELAY_S = 3        # "/reboot now": just long enough for the reply to go out
 PING_RE = re.compile(r"time\s*([=<])\s*([\d.]+)\s*ms", re.I)
 
 
@@ -130,19 +131,25 @@ class Rebooter:
     def pending(self):
         return self.timer is not None
 
-    def schedule(self, on_failure):
+    def schedule(self, on_failure, now=False):
         """Arm the reboot. Returns the reply text; on_failure(text) is called
-        if the reboot command turns out not to work."""
+        if the reboot command turns out not to work. now=True fires after
+        NOW_DELAY_S and replaces a pending delayed reboot."""
         if not self.platform.startswith("linux"):
             return "Reboot is only supported on Linux"
         with self.lock:
             if self.timer is not None:
-                return "Reboot already set for %s. /reboot cancel to stop it" % self._at()
-            self.when = self.clock() + self.delay_s
-            self.timer = threading.Timer(self.delay_s, self._fire, args=(on_failure,))
+                if not now:
+                    return "Reboot already set for %s. Send /reboot cancel to stop it" % self._at()
+                self.timer.cancel()
+            delay = NOW_DELAY_S if now else self.delay_s
+            self.when = self.clock() + delay
+            self.timer = threading.Timer(delay, self._fire, args=(on_failure,))
             self.timer.daemon = True
             self.timer.start()
-            return "Rebooting at %s" % self._at()
+            if now:
+                return "Rebooting now"
+            return "Rebooting at %s. Send /reboot cancel to stop it" % self._at()
 
     def _at(self):
         return time.strftime("%H:%M:%S", time.localtime(self.when))

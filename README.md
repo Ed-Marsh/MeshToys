@@ -46,12 +46,26 @@ To run it unattended, on a Raspberry Pi Zero W with the node plugged in by USB a
 | `/announce` | **Admin only.** Broadcasts the `--announce` preset on the public channel and replies `Sent publicly` |
 | `/say text` | **Admin only.** Broadcasts `text` on the public channel. Example: `/say Net tonight 8pm` |
 | `/status` | Bridge uptime and host uptime, plus a ping test to the router and to the internet (`Router: ok 1ms`, `Internet: ok 23ms`, or `DOWN`). The addresses are set with `--status-router` and `--status-host` |
-| `/reboot yes` | **Admin only.** Reboots the host (Linux only) after a short delay, replying `Rebooting at HH:MM:SS`. Plain `/reboot` does nothing but remind you to add `yes`, and `/reboot cancel` stops a pending one. See [Reboot setup](docs/bridge-reference.md#reboot-setup) |
+| `/reboot yes` | **Admin only.** Reboots the host (Linux only) after a 60 second delay, replying `Rebooting at HH:MM:SS. Send /reboot cancel to stop it`. `/reboot now` goes after about 3 seconds, and `/reboot cancel` stops a pending one. Plain `/reboot` does nothing but remind you of the options. See [Reboot setup](docs/bridge-reference.md#reboot-setup) |
 | `/stats` | **Admin only.** Lifetime usage: unique visitors (total, 24h, 7d), commands and games used and how often, errors, and the busiest nodes. Kept in `stats.json` |
 | `/calc expression` | Calculator. Supports `+ - * / // % ** ^` (`^` is power), brackets and `!` for factorial (0 to 170). Examples: `/calc 23 * 5 / (10 * 2)` gives `5.75`, `/calc 4!` gives `24`. Very large results are shown in scientific notation, and oversized powers are refused |
 | `/ping` | `pong` and the PC's time |
 | `/help` | List of available commands, one per line (admin commands only for admin nodes). The games are not listed; use `/games` for those. `/help name` describes one command, e.g. `/help calc` |
 | `/games` | List of the games you can play over the mesh. `/help name` describes one, e.g. `/help zork` |
+
+## Admin
+
+Some commands are for the person running the bridge. They only work as a direct message from a node listed with `--admin`, are hidden from `/help` for everyone else, and are ignored if sent publicly:
+
+```
+python mesh_bridge.py --lat 51.50 --lon -0.12 --dm-only --admin '!b3725444'
+```
+
+- `/stats` shows lifetime usage. The counters are kept in `stats.json` next to the script and written at most every 15 minutes (`--stats-interval-min`), and only when something has changed. Delete the file to reset them.
+- `/reboot yes`, `/reboot now` and `/reboot cancel` restart the Raspberry Pi or other Linux host. This needs either a `SUDO_PASSWORD` in a git-ignored `.env` file (copy `.env.example`) or a sudoers rule for `reboot`, as set out in [Reboot setup](docs/bridge-reference.md#reboot-setup).
+- `/announce` and `/say` broadcast on the public channel, with a 60 second cooldown.
+
+All the options are in the [bridge reference](docs/bridge-reference.md).
 
 ## Games
 

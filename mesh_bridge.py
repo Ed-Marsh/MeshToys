@@ -396,16 +396,16 @@ def cmd_status(cfg, ctx):
 
 
 @command("reboot", admin=True,
-         info="Admin only. Reboot the host after a short delay. /reboot yes to confirm, /reboot cancel to stop")
+         info="Admin only. Reboot the host: /reboot yes (after a delay), /reboot now, /reboot cancel")
 def cmd_reboot(cfg, ctx):
     b = ctx["bridge"]
     arg = ctx["args"].strip().lower()
     if arg == "cancel":
         return b.rebooter.cancel()
-    if arg != "yes":
-        return "This reboots the host. Send /reboot yes to confirm"
-    log.warning("Reboot requested by %s", ctx["sender"])
-    return b.rebooter.schedule(lambda msg: b.send(ctx["sender"], msg))
+    if arg not in ("yes", "now"):
+        return "This reboots the host. Send /reboot yes (delayed) or /reboot now"
+    log.warning("Reboot (%s) requested by %s", arg, ctx["sender"])
+    return b.rebooter.schedule(lambda msg: b.send(ctx["sender"], msg), now=(arg == "now"))
 
 
 @command("help", info="List commands. Use /help name for details, e.g. /help calc")
@@ -767,7 +767,7 @@ def main():
     ap.add_argument("--reboot-delay", type=float, default=hostops.DEFAULT_REBOOT_DELAY_S,
                     metavar="SECS",
                     help="seconds between /reboot yes and the reboot, so the reply gets out "
-                         "(default 15)")
+                         "(default 60)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
