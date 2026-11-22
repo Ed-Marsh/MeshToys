@@ -102,7 +102,7 @@ class RebooterTests(unittest.TestCase):
     def test_reboots_after_delay_flushing_first(self):
         r = self.make(password="pw")
         reply = r.schedule(self.failures.append)
-        self.assertRegex(reply, r"^Rebooting at \d\d:\d\d:\d\d$")
+        self.assertRegex(reply, r"^Rebooting at \d\d:\d\d:\d\d\. Send /reboot cancel to stop it$")
         self.assertTrue(r.pending())
         self.assertTrue(self.ran.wait(2))
         self.assertEqual(self.calls, ["before", (["sudo", "-S", "-p", "", "reboot"], "pw\n")])
@@ -127,6 +127,17 @@ class RebooterTests(unittest.TestCase):
         time.sleep(0.5)
         self.assertEqual(self.calls, [])
         self.assertEqual(r.cancel(), "No reboot pending")
+
+    def test_now_fires_quickly_and_replaces_a_pending_reboot(self):
+        with mock.patch.object(hostops, "NOW_DELAY_S", 0.05):
+            r = self.make(delay_s=60)
+            r.schedule(self.failures.append)                    # waiting a minute
+            self.assertEqual(r.schedule(self.failures.append, now=True), "Rebooting now")
+            self.assertTrue(self.ran.wait(2))
+        self.assertEqual(len([c for c in self.calls if c != "before"]), 1)
+
+    def test_default_delay_gives_time_to_cancel(self):
+        self.assertGreaterEqual(hostops.DEFAULT_REBOOT_DELAY_S, 60)
 
     def test_second_request_does_not_stack(self):
         r = self.make(delay_s=0.3)
@@ -195,16 +206,23 @@ class BridgeTests(unittest.TestCase):
         self.assertRegex(out, r"Internet: (ok 2ms|DOWN)")
         self.assertNotIn("192.168", out)
 
+    def test_reboot_now_over_the_mesh(self):
+        with mock.patch.object(hostops, "NOW_DELAY_S", 30):
+            self.assertEqual(self.msg("!boss", "/reboot NOW"), ["Rebooting now"])
+        self.assertTrue(self.bridge.rebooter.pending())
+        self.msg("!boss", "/reboot cancel")
+
     def test_reboot_needs_yes(self):
         out = self.msg("!boss", "/reboot")
         self.assertIn("/reboot yes", out[0])
+        self.assertIn("/reboot now", out[0])
         self.assertFalse(self.bridge.rebooter.pending())
         self.msg("!boss", "/reboot maybe")
         self.assertFalse(self.bridge.rebooter.pending())
 
     def test_reboot_yes_confirms_with_time_then_cancel(self):
         out = self.msg("!boss", "/reboot yes")
-        self.assertRegex(out[0], r"^Rebooting at \d\d:\d\d:\d\d$")
+        self.assertRegex(out[0], r"^Rebooting at \d\d:\d\d:\d\d\. Send /reboot cancel to stop it$")
         self.assertTrue(self.bridge.rebooter.pending())
         self.assertEqual(self.msg("!boss", "/reboot cancel"), ["Reboot cancelled"])
         self.bridge.rebooter.runner.assert_not_called()

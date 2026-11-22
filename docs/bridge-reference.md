@@ -40,7 +40,7 @@ Options:
 - `--stats-file FILE`: where the lifetime usage counters behind `/stats` are kept. Default `stats.json` next to the script. Delete it to reset the totals.
 - `--stats-interval-min MIN`: write the stats file at most this often, and only if something has changed since the last write. It is also written when the bridge shuts down cleanly (Ctrl+C or `systemctl stop`), but a power cut can lose up to this long's worth of counts. Default 15.
 - `--status-router HOST`, `--status-host HOST`: what `/status` pings for its `Router` and `Internet` lines. Defaults `192.168.55.1` and `google.com`.
-- `--reboot-delay SECS`: wait between `/reboot yes` and the reboot, so the confirmation reply can get out. Default 15.
+- `--reboot-delay SECS`: wait between `/reboot yes` and the reboot, which is your window to send `/reboot cancel`. Default 60. `/reboot now` ignores it and waits only 3 seconds, just long enough for the reply to be sent.
 - `--session-idle-min MIN` (also `--zork-idle-min`): close a Zork, Adventure or Trek session after this many idle minutes. The game is saved. Default 30.
 - `--game-max-chunks N` (also `--zork-max-chunks`): most messages sent for one Zork or Adventure reply. Default 6 for Zork and 10 for Adventure (its `help` text and its longest room description need 9 or 10).
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
@@ -89,7 +89,7 @@ Anyone who can reach the node over the mesh can trigger commands unless `--allow
 
 ## Reboot setup
 
-`/reboot yes` (admin only, Linux only) waits `--reboot-delay` seconds, writes the stats file, then runs the reboot. If the bridge is not running as root it needs sudo. Pick one:
+`/reboot yes` (admin only, Linux only) replies `Rebooting at HH:MM:SS. Send /reboot cancel to stop it`, waits `--reboot-delay` seconds, writes the stats file, then runs the reboot. `/reboot now` does the same after only 3 seconds, and replaces a pending delayed reboot, so it is also the way to hurry one along. `/reboot cancel` stops either one while it is waiting. If the bridge is not running as root it needs sudo. Pick one:
 
 - **Password in `.env`:** copy `.env.example` to `.env` next to `mesh_bridge.py`, set `SUDO_PASSWORD=...` and run `chmod 600 .env`. The file is git-ignored and the password is only ever passed to `sudo` on its standard input, never on a command line or in the log.
 - **No password stored (safer):** run `sudo visudo -f /etc/sudoers.d/meshtoys-reboot` and add `youruser ALL=(root) NOPASSWD: /usr/sbin/reboot`, replacing `youruser` with the account the bridge runs as. Leave `SUDO_PASSWORD` unset.
