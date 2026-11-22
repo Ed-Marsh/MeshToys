@@ -7,7 +7,7 @@ Reference for `mesh_bridge.py`: how commands are sent, every option, node setup,
 - The command must be the very first thing in the message: `/calc 10/2` works, but `what is 10 /x` and `@calc 10` are ignored. This keeps a `/` used for division inside text from triggering anything.
 - Command names are not case sensitive. Everything after the name is passed to the command as its arguments.
 - Send `/help` to list the commands and `/help name` (for example `/help calc`) for a one-line description of one. The list has one command per line. The games are not in that list: send `/games` to see them.
-- Admin commands (`/announce`, `/say`, `/stats`) are hidden from `/help` unless the sender is in `--admin`, and `/help say` from anyone else answers `Unknown /say`.
+- Admin commands (`/announce`, `/say`, `/stats`, `/reboot`) are hidden from `/help` unless the sender is in `--admin`, and `/help say` from anyone else answers `Unknown /say`.
 
 ## Running the bridge
 
@@ -33,12 +33,14 @@ Options:
 - `--allow '!a1b2c3d4' ...`: only obey messages from these node IDs. Default is anyone on the mesh.
 - `--dm-only`: only act on direct messages addressed to this node. Public/channel broadcasts are ignored, and the reply goes back as a direct message to the sender only.
 - `--near-km`: a caller whose known position is within this many km of the base is treated as being at home and gets `You: near home` instead of a second lookup. Default 2.
-- `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`, `/stats`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
+- `--admin '!id' ...`: node IDs allowed to run admin commands (`/announce`, `/say`, `/stats`, `/reboot`). Admin commands are disabled unless this is set. Other nodes are ignored silently and the attempt is logged.
 - `--announce TEXT`: the preset text sent by `/announce`. `{name}` is replaced with this node's long name, `{short}` with its short name and `{id}` with its ID (for example `!b3725444`).
 - `--announce-channel N`: channel index for public sends. Default 0 (the primary channel).
 - `--reply-gap SECS`: pause between the parts of a multi-message reply (Trek, Zork and Adventure). Default 3.
 - `--stats-file FILE`: where the lifetime usage counters behind `/stats` are kept. Default `stats.json` next to the script. Delete it to reset the totals.
 - `--stats-interval-min MIN`: write the stats file at most this often, and only if something has changed since the last write. It is also written when the bridge shuts down cleanly (Ctrl+C or `systemctl stop`), but a power cut can lose up to this long's worth of counts. Default 15.
+- `--status-router HOST`, `--status-host HOST`: what `/status` pings for its `Router` and `Internet` lines. Defaults `192.168.55.1` and `google.com`.
+- `--reboot-delay SECS`: wait between `/reboot yes` and the reboot, so the confirmation reply can get out. Default 15.
 - `--session-idle-min MIN` (also `--zork-idle-min`): close a Zork, Adventure or Trek session after this many idle minutes. The game is saved. Default 30.
 - `--game-max-chunks N` (also `--zork-max-chunks`): most messages sent for one Zork or Adventure reply. Default 6 for Zork and 10 for Adventure (its `help` text and its longest room description need 9 or 10).
 - `--zork-save-dir DIR`: where Zork saves go, one file per node. Default `zork_saves/` next to the script (ignored by git).
@@ -84,3 +86,12 @@ The caller's position comes from the node database on your Heltec, so it only ex
 ## Security
 
 Anyone who can reach the node over the mesh can trigger commands unless `--allow` is set. With `--dm-only`, they must send a direct message to this node; channel broadcasts are ignored. Use `--allow` before adding any command that changes something. `/announce` and `/say` are restricted to nodes in `--admin`, since a node ID is what identifies the sender.
+
+## Reboot setup
+
+`/reboot yes` (admin only, Linux only) waits `--reboot-delay` seconds, writes the stats file, then runs the reboot. If the bridge is not running as root it needs sudo. Pick one:
+
+- **Password in `.env`:** copy `.env.example` to `.env` next to `mesh_bridge.py`, set `SUDO_PASSWORD=...` and run `chmod 600 .env`. The file is git-ignored and the password is only ever passed to `sudo` on its standard input, never on a command line or in the log.
+- **No password stored (safer):** run `sudo visudo -f /etc/sudoers.d/meshtoys-reboot` and add `youruser ALL=(root) NOPASSWD: /usr/sbin/reboot`, replacing `youruser` with the account the bridge runs as. Leave `SUDO_PASSWORD` unset.
+
+If the reboot command fails (wrong password, no sudo rule) the admin gets a direct message `Reboot failed: ...`. Since the confirmation has already been sent by then, treat `Rebooting at ...` as "scheduled", and use `/status` afterwards to see the host uptime reset. If the bridge is under systemd with `Restart=always` or enabled at boot, it comes back by itself.

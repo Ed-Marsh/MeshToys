@@ -41,6 +41,7 @@ import meshtastic.tcp_interface
 from pubsub import pub
 
 from adventure import session as adventure_session
+import hostops
 import stats as stats_mod
 import trek
 from trek import session as trek_session
@@ -386,6 +387,27 @@ def cmd_ping(cfg, ctx):
     return "pong " + time.strftime("%H:%M:%S")
 
 
+@command("status", info="Bridge and host uptime, plus a ping test to the router and to the internet")
+def cmd_status(cfg, ctx):
+    b = ctx["bridge"]
+    return trek.pack(hostops.status_lines(
+        b.stats.started, getattr(cfg, "status_router", "192.168.55.1"),
+        getattr(cfg, "status_host", "google.com")))
+
+
+@command("reboot", admin=True,
+         info="Admin only. Reboot the host after a short delay. /reboot yes to confirm, /reboot cancel to stop")
+def cmd_reboot(cfg, ctx):
+    b = ctx["bridge"]
+    arg = ctx["args"].strip().lower()
+    if arg == "cancel":
+        return b.rebooter.cancel()
+    if arg != "yes":
+        return "This reboots the host. Send /reboot yes to confirm"
+    log.warning("Reboot requested by %s", ctx["sender"])
+    return b.rebooter.schedule(lambda msg: b.send(ctx["sender"], msg))
+
+
 @command("help", info="List commands. Use /help name for details, e.g. /help calc")
 def cmd_help(cfg, ctx):
     is_admin = ctx.get("is_admin")
@@ -475,6 +497,9 @@ class Bridge:
         self.stats = stats_mod.Stats(
             getattr(cfg, "stats_file", None) or os.path.join(here, "stats.json"),
             flush_s=getattr(cfg, "stats_interval_min", 15) * 60)
+        self.rebooter = hostops.Rebooter(
+            delay_s=getattr(cfg, "reboot_delay", hostops.DEFAULT_REBOOT_DELAY_S),
+            password=os.environ.get("SUDO_PASSWORD"), before=self.stats.flush)
         idle_s = getattr(cfg, "session_idle_min", 30) * 60
         # A node can be in one game at a time; each says how to leave the others.
         def blocker(me):
@@ -735,10 +760,20 @@ def main():
     ap.add_argument("--stats-interval-min", type=float, default=15, metavar="MIN",
                     help="write the stats file at most this often, and only if something "
                          "changed (also written on shutdown). Default 15")
+    ap.add_argument("--status-router", default="192.168.55.1", metavar="HOST",
+                    help="host pinged as the 'Router' line of /status (default 192.168.55.1)")
+    ap.add_argument("--status-host", default="google.com", metavar="HOST",
+                    help="host pinged as the 'Internet' line of /status (default google.com)")
+    ap.add_argument("--reboot-delay", type=float, default=hostops.DEFAULT_REBOOT_DELAY_S,
+                    metavar="SECS",
+                    help="seconds between /reboot yes and the reboot, so the reply gets out "
+                         "(default 15)")
     ap.add_argument("--log-file", default=None,
                     help="also append the log (including public messages heard) to this file")
     ap.add_argument("-v", "--verbose", action="store_true")
     cfg = ap.parse_args()
+    # .env next to the script (SUDO_PASSWORD for /reboot); never committed.
+    hostops.load_env(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
     handlers = [logging.StreamHandler()]
     if cfg.log_file:
         handlers.append(logging.FileHandler(cfg.log_file, encoding="utf-8"))
